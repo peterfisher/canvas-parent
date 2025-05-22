@@ -1,0 +1,1 @@
+"""Frontend package for Canvas Grade Scraper.""" 

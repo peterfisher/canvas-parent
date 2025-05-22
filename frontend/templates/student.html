@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block nav_items %}
+<li><a href="/">Back to Students</a></li>
+{% endblock %}
+
+{% block content %}
+<h2>Scorecard for {{ student_name }}</h2>
+
+{% if courses %}
+    <div class="courses">
+        {% for course in courses %}
+            <div class="course-card">
+                <h3>{{ course.name }}</h3>
+                <p>Grade: {{ course.grade|default('Not Available', true) }}</p>
+                
+                {% if course.assignments %}
+                    <h4>Assignments</h4>
+                    <table class="assignments-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Score</th>
+                                <th>Due Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in course.assignments %}
+                                <tr>
+                                    <td>{{ assignment.name }}</td>
+                                    <td>{{ assignment.status|default('Unknown', true) }}</td>
+                                    <td>{{ assignment.score|default('N/A', true) }}</td>
+                                    <td>{{ assignment.due_date|default('N/A', true) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No assignments found for this course.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>No courses found for this student.</p>
+{% endif %}
+{% endblock %} 

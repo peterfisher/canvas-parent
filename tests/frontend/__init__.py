@@ -1,0 +1,1 @@
+"""Frontend tests for Canvas Grade Scraper.""" 

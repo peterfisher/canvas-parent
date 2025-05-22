@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Canvas Student Scorecard{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Canvas Student Scorecard</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    {% block nav_items %}{% endblock %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Canvas Grade Scraper</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

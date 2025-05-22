@@ -1,0 +1,52 @@
+# Python virtual environments
+venv/
+.venv/
+.env/
+.Python
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]  # Matches .pyc, .pyo, and .pyd
+.pytest_cache/
+
+# Distribution and packaging
+*.egg-info/
+*.egg
+dist/
+build/
+*.manifest
+*.spec
+
+# Test coverage and reports
+.coverage
+htmlcov/
+.tox/
+tests/test_data/*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+.cursor/
+config.ini
+
+# Log files
+*.log

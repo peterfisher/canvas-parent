@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Assignments{% endblock %}
+
+{% block extra_head %}
+<style>
+    .status-indicator {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-right: 10px;
+    }
+    
+    /* Status colors */
+    .status-excused {
+        background-color: var(--warning-color); /* yellow */
+    }
+    
+    .status-late {
+        background-color: var(--warning-color); /* yellow */
+    }
+    
+    .status-graded {
+        background-color: var(--success-color); /* green */
+    }
+    
+    .status-submitted {
+        background-color: var(--success-color); /* green */
+    }
+    
+    .status-upcoming {
+        background-color: #808080; /* grey */
+    }
+    
+    .status-missing {
+        background-color: var(--danger-color); /* red */
+    }
+    
+    .status-unknown {
+        background-color: #FFA500; /* orange */
+    }
+    
+    .nav-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .nav-button {
+        padding: 8px 15px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    .sync-info {
+        text-align: right;
+        margin-bottom: 20px;
+    }
+    
+    .top-menu {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    
+    .assignments-container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+    }
+    
+    .table-header {
+        background-color: var(--secondary-color);
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+    
+    .assignment-row {
+        display: grid;
+        grid-template-columns: 40px 1fr 1fr 1fr 1fr 1fr;
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+    }
+
+    .status-cell, .course-cell, .assignment-cell {
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="assignments-container">
+    <!-- Top menu -->
+    <div class="top-menu">
+        <!-- Left navigation buttons -->
+        <div class="nav-buttons">
+            <a href="#" class="nav-button">Missing</a>
+            <a href="#" class="nav-button">Grades</a>
+            <a href="#" class="nav-button">Assignments</a>
+        </div>
+        
+        <!-- Right sync information -->
+        <div class="sync-info">
+            <p>• Last Sync: {{ last_sync|default('Never', true) }}</p>
+        </div>
+    </div>
+    
+    <!-- Table header -->
+    <div class="table-header">
+        <h3>Assignments</h3>
+    </div>
+    
+    <!-- Assignment list -->
+    {% if assignments %}
+        <!-- Column headers -->
+        <div class="assignment-row" style="font-weight: bold; background-color: var(--secondary-color);">
+            <div></div>
+            <div class="course-cell">Course</div>
+            <div class="assignment-cell">Assignment</div>
+            <div class="status-cell">Assignment Status</div>
+            <div>Assignment Due Date</div>
+            <div>Score</div>
+        </div>
+        
+        <!-- Assignment rows -->
+        {% for assignment in assignments %}
+            <div class="assignment-row">
+                <div>
+                    {% if assignment.status == 'EXCUSED' %}
+                        <span class="status-indicator status-excused"></span>
+                    {% elif assignment.status == 'LATE' %}
+                        <span class="status-indicator status-late"></span>
+                    {% elif assignment.status == 'GRADED' %}
+                        <span class="status-indicator status-graded"></span>
+                    {% elif assignment.status == 'SUBMITTED' %}
+                        <span class="status-indicator status-submitted"></span>
+                    {% elif assignment.status == 'UPCOMING' %}
+                        <span class="status-indicator status-upcoming"></span>
+                    {% elif assignment.status == 'MISSING' %}
+                        <span class="status-indicator status-missing"></span>
+                    {% else %}
+                        <span class="status-indicator status-unknown"></span>
+                    {% endif %}
+                </div>
+                <div class="course-cell">{{ assignment.course_name }}</div>
+                <div class="assignment-cell">{{ assignment.name }}</div>
+                <div class="status-cell">{{ assignment.status }}</div>
+                <div>{{ assignment.due_date|default('N/A', true) }}</div>
+                <div>{{ assignment.score|default('N/A', true) }}</div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No assignments found.</p>
+    {% endif %}
+</div>
+{% endblock %} 
