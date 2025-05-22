@@ -4,6 +4,48 @@
 
 The overall purpose of this system is to help parents quickly inform themselves of their students' grades and identify where there might be missing assignments. 
 
+## Usage
+
+You can easily run this application using the included `run.sh` script, which handles the virtual environment, dependencies, data processing, and web server functionality.
+
+### Prerequisites
+- Make sure you have Python >=3.10 installed
+- Ensure you have created a `config.ini` file (see example config example_config.ini)
+- Create a virtual environment if not already present:
+  ```
+  python -m venv venv
+  source venv/bin/activate
+  ```
+
+### Basic Usage
+```
+./run.sh
+```
+This command will retrieve students scorecard data and then create the relevant html files to quickly view student scorecard status.
+
+```
+./run.sh --web --interval 60
+```
+
+This command will run a persistent webserver and update the scorecard data every 60 minutes.
+
+### Start a Web Server
+```
+./run.sh --web [PORT]
+```
+This command processes the data and then starts a web server to view the results. The default port is 8000 if not specified.
+
+### Scheduled Updates
+```
+./run.sh --web --interval MINUTES
+```
+This command starts the web server and automatically runs data processing at the specified interval (in minutes).
+
+### Additional Options
+- `-w, --web [PORT]`: Run web server after processing (default port: 8000)
+- `-i, --interval MIN`: Run updates every MIN minutes (requires --web)
+- `-h, --help`: Show help message
+
 ## Design
 
 The application follows a modular design, centered around the `main.py` script, which orchestrates the entire process.
