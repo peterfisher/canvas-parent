@@ -227,17 +227,17 @@ def test_determine_status_specific_cases(assignment_scraper, mock_html_row):
             "score_html": '<span class="grade"></span><span> / 10</span>',
             "expected_status": AssignmentStatus.UNKNOWN
         },
-        # Test NOT MISSING - unsubmitted with indicator but pending grading 
+        # Test MISSING status - unsubmitted with indicator and pending grading (still missing due to pill)
         {
             "row_classes": "student_assignment",
-            "title": "Not Missing Despite Indicator",
+            "title": "Missing Despite Pending Grading",
             "context": "",
             "due_date": past_date,
             "submitted_date": "",
             "status_cell_classes": "",
             "status_html": '<span class="submission_status">unsubmitted</span><span class="submission-missing-pill">MISSING</span>',
             "score_html": '<span class="grade">-</span><span> / 10</span>',
-            "expected_status": AssignmentStatus.UNKNOWN
+            "expected_status": AssignmentStatus.MISSING
         },
         # Test UNKNOWN status (final grade row)
         {

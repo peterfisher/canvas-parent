@@ -57,7 +57,7 @@ class AssignmentScraper(BaseScraper):
         3. GRADED - Assignment has been submitted and graded
         4. SUBMITTED - Assignment has been submitted but not yet graded
         5. UPCOMING - Assignment is not yet due
-        6. MISSING - Assignment is explicitly marked as unsubmitted and past due with visual indicator
+        6. MISSING - Assignment is explicitly marked as missing with visual indicator
         7. UNKNOWN - Assignment status cannot be determined with confidence
         
         Args:
@@ -98,29 +98,36 @@ class AssignmentScraper(BaseScraper):
                         return AssignmentStatus.UPCOMING
             
             # 6. Check if explicitly marked as missing with visual indicator
-            # Only mark as missing if there's a visual indicator (like a pill/bubble)
-            score_cell = row.find("td", class_="assignment_score")
-            
             # Check for missing indicator: either a visual pill or special class
-            missing_indicator = (
-                (status_cell and status_cell.find("span", class_="submission-missing-pill")) or
-                "missing_assignment" in row.get("class", []) or
-                (status_cell and "missing" in status_cell.get("class", []))
-            )
+            missing_pill = (status_cell and status_cell.find("span", class_="submission-missing-pill"))
+            missing_assignment_class = "missing_assignment" in row.get("class", [])
+            missing_status_class = (status_cell and "missing" in status_cell.get("class", []))
             
-            # Check if assignment is pending teacher grading
-            is_pending_grading = False
-            if score_cell:
-                score_text = score_cell.text.strip()
-                # Assignments pending grading usually have either "-" or "–" or no score
-                is_pending_grading = (
-                    "–" in score_text or 
-                    "-" in score_text or
-                    score_text == ""
-                )
-            
-            if status_text == "unsubmitted" and missing_indicator and not is_pending_grading:
+            # If there's a missing pill, the assignment is definitely missing
+            if missing_pill:
                 return AssignmentStatus.MISSING
+            
+            # Check for other missing indicators (class-based) with unsubmitted status
+            if status_text == "unsubmitted" and (missing_assignment_class or missing_status_class):
+                return AssignmentStatus.MISSING
+            
+            # Check if assignment is pending teacher grading (only if no missing indicators)
+            if status_text == "unsubmitted":
+                score_cell = row.find("td", class_="assignment_score")
+                if score_cell:
+                    score_text = score_cell.text.strip()
+                    # Assignments pending grading usually have either "-" or "–" or no score
+                    is_pending_grading = (
+                        "–" in score_text or 
+                        "-" in score_text or
+                        score_text == ""
+                    )
+                    if is_pending_grading:
+                        return AssignmentStatus.UNKNOWN
+                
+                # If unsubmitted but no pending grading indicators, might be missing
+                # but we'll mark as UNKNOWN since we can't be certain without visual indicators
+                return AssignmentStatus.UNKNOWN
             
             # Special case: If it's a final grade or group total row, mark as UNKNOWN
             if any(cls in row.get("class", []) for cls in ["final_grade", "group_total"]):
