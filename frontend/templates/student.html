@@ -2,6 +2,79 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Letter grade styling */
+    .letter-grade {
+        font-weight: bold;
+        font-size: 1.1em;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-right: 5px;
+    }
+    
+    .grade-a {
+        background-color: #28a745; /* green */
+        color: white;
+    }
+    
+    .grade-b {
+        background-color: #20c997; /* teal/bluish-green */
+        color: white;
+    }
+    
+    .grade-c {
+        background-color: #ffc107; /* yellow */
+        color: #212529;
+    }
+    
+    .grade-d {
+        background-color: #fd7e14; /* orange */
+        color: white;
+    }
+    
+    .grade-f {
+        background-color: #dc3545; /* red */
+        color: white;
+    }
+    
+    .score-fraction {
+        color: #6c757d;
+        font-size: 0.9em;
+    }
+    
+    .score-container {
+        display: inline-flex;
+        align-items: center;
+        width: 160px;
+        justify-content: flex-start;
+    }
+    
+    .grade-letter {
+        width: 24px;
+        text-align: center;
+        flex-shrink: 0;
+        margin-right: 12px;
+    }
+    
+    .grade-separator {
+        width: 8px;
+        text-align: center;
+        color: #6c757d;
+        font-weight: bold;
+        flex-shrink: 0;
+        margin: 0 12px;
+    }
+    
+    .grade-fraction {
+        text-align: left;
+        flex-grow: 1;
+        min-width: 0;
+        margin-left: 12px;
+    }
+</style>
+{% endblock %}
+
 {% block nav_items %}
 <li><a href="/">Back to Students</a></li>
 {% endblock %}
@@ -32,7 +105,7 @@
                                 <tr>
                                     <td>{{ assignment.name }}</td>
                                     <td>{{ assignment.status|default('Unknown', true) }}</td>
-                                    <td>{{ assignment.score|default('N/A', true) }}</td>
+                                    <td>{{ assignment.score|format_score(assignment.max_score)|safe }}</td>
                                     <td>{{ assignment.due_date|format_due_date(assignment.status) }}</td>
                                 </tr>
                             {% endfor %}

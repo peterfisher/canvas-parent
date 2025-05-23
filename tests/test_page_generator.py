@@ -81,6 +81,193 @@ class TestPageGenerator(unittest.TestCase):
         result = self.page_generator._format_due_date('2025-13-45', 'UPCOMING')
         self.assertEqual(result, '2025-13-45')
 
+    def test_format_score_letter_grades(self):
+        """Test formatting of scores with correct letter grades"""
+        # Test A grade (90-100%)
+        result = self.page_generator._format_score(95, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-a grade-letter">A</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">95/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test B grade (80-89%)
+        result = self.page_generator._format_score(85, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-b grade-letter">B</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">85/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test C grade (70-79%)
+        result = self.page_generator._format_score(75, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-c grade-letter">C</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">75/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test D grade (60-69%)
+        result = self.page_generator._format_score(65, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-d grade-letter">D</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">65/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test F grade (0-59%)
+        result = self.page_generator._format_score(45, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-f grade-letter">F</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">45/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+
+    def test_format_score_edge_cases(self):
+        """Test score formatting with edge cases and boundary values"""
+        # Test exact boundary values
+        result = self.page_generator._format_score(90, 100)  # Exactly 90%
+        self.assertIn('grade-a', result)
+        
+        result = self.page_generator._format_score(89.9, 100)  # Just below 90%
+        self.assertIn('grade-b', result)
+        
+        # Test perfect score
+        result = self.page_generator._format_score(100, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-a grade-letter">A</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">100/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test zero score
+        result = self.page_generator._format_score(0, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-f grade-letter">F</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">0/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test fractional scores (should format cleanly)
+        result = self.page_generator._format_score(87.5, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-b grade-letter">B</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">87.5/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+
+    def test_format_score_different_point_values(self):
+        """Test score formatting with different point scales"""
+        # Test small assignment
+        result = self.page_generator._format_score(9, 10)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-a grade-letter">A</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">9/10</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test large assignment
+        result = self.page_generator._format_score(450, 500)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-a grade-letter">A</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">450/500</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test odd point values
+        result = self.page_generator._format_score(23, 30)  # 76.67% = C
+        self.assertIn('grade-c', result)
+        self.assertIn('23/30', result)
+
+    def test_format_score_none_values(self):
+        """Test score formatting when score or max_score is None"""
+        # Test None score
+        result = self.page_generator._format_score(None, 100)
+        expected = '''<div class="score-container">
+                <span class="grade-letter"></span>
+                <span class="grade-separator">-</span>
+                <span class="grade-fraction"></span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test None max_score
+        result = self.page_generator._format_score(85, None)
+        expected = '''<div class="score-container">
+                <span class="grade-letter"></span>
+                <span class="grade-separator">-</span>
+                <span class="grade-fraction"></span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test both None
+        result = self.page_generator._format_score(None, None)
+        expected = '''<div class="score-container">
+                <span class="grade-letter"></span>
+                <span class="grade-separator">-</span>
+                <span class="grade-fraction"></span>
+            </div>'''
+        self.assertEqual(result, expected)
+
+    def test_format_score_invalid_values(self):
+        """Test score formatting with invalid input values"""
+        # Test string values
+        result = self.page_generator._format_score('invalid', 100)
+        expected = '''<div class="score-container">
+                <span class="grade-letter"></span>
+                <span class="grade-separator">-</span>
+                <span class="grade-fraction"></span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        result = self.page_generator._format_score(85, 'invalid')
+        expected = '''<div class="score-container">
+                <span class="grade-letter"></span>
+                <span class="grade-separator">-</span>
+                <span class="grade-fraction"></span>
+            </div>'''
+        self.assertEqual(result, expected)
+
+    def test_format_score_floating_point_precision(self):
+        """Test that floating point scores are formatted cleanly"""
+        # Test that .0 is removed from whole numbers
+        result = self.page_generator._format_score(85.0, 100.0)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-b grade-letter">B</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">85/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+        
+        # Test that meaningful decimals are preserved
+        result = self.page_generator._format_score(85.75, 100)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-b grade-letter">B</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">85.75/100</span>
+            </div>'''
+        self.assertEqual(result, expected)
+
+    def test_format_score_zero_max_score(self):
+        """Test score formatting with zero max_score"""
+        # Test zero max_score (edge case)
+        result = self.page_generator._format_score(0, 0)
+        expected = '''<div class="score-container">
+                <span class="letter-grade grade-f grade-letter">F</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">0/0</span>
+            </div>'''
+        self.assertEqual(result, expected)
+
 
 if __name__ == '__main__':
     unittest.main() 

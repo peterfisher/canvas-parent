@@ -32,6 +32,7 @@ class PageGenerator:
         # Add custom filters
         self.env.filters['default'] = self._default_filter
         self.env.filters['format_due_date'] = self._format_due_date
+        self.env.filters['format_score'] = self._format_score
         
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
@@ -79,6 +80,69 @@ class PageGenerator:
         except (ValueError, TypeError, AttributeError):
             return due_date_str or 'N/A'
         
+    def _format_score(self, score, max_score):
+        """
+        Format assignment score with American letter grade and fraction
+        
+        Args:
+            score: Numeric score received (can be None)
+            max_score: Maximum possible points (can be None)
+            
+        Returns:
+            Formatted score string with letter grade and fraction
+        """
+        # If no score, return dash aligned with center dot position
+        if score is None or max_score is None:
+            return f'''<div class="score-container">
+                <span class="grade-letter"></span>
+                <span class="grade-separator">-</span>
+                <span class="grade-fraction"></span>
+            </div>'''
+        
+        try:
+            score = float(score)
+            max_score = float(max_score)
+            
+            # Calculate percentage
+            if max_score == 0:
+                percentage = 0
+            else:
+                percentage = (score / max_score) * 100
+            
+            # Determine letter grade based on percentage
+            if percentage >= 90:
+                letter_grade = 'A'
+                grade_class = 'grade-a'
+            elif percentage >= 80:
+                letter_grade = 'B'
+                grade_class = 'grade-b'
+            elif percentage >= 70:
+                letter_grade = 'C'
+                grade_class = 'grade-c'
+            elif percentage >= 60:
+                letter_grade = 'D'
+                grade_class = 'grade-d'
+            else:
+                letter_grade = 'F'
+                grade_class = 'grade-f'
+            
+            # Format score as fraction (remove .0 if whole numbers)
+            score_str = f"{score:g}"  # :g removes trailing zeros
+            max_score_str = f"{max_score:g}"
+            
+            return f'''<div class="score-container">
+                <span class="letter-grade {grade_class} grade-letter">{letter_grade}</span>
+                <span class="grade-separator">•</span>
+                <span class="score-fraction grade-fraction">{score_str}/{max_score_str}</span>
+            </div>'''
+            
+        except (ValueError, TypeError):
+            return f'''<div class="score-container">
+                <span class="grade-letter"></span>
+                <span class="grade-separator">-</span>
+                <span class="grade-fraction"></span>
+            </div>'''
+    
     def get_db_connection(self) -> sqlite3.Connection:
         """Get a connection to the database"""
         return sqlite3.connect(self.db_path)
