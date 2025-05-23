@@ -156,7 +156,7 @@
                 <div class="course-cell">{{ assignment.course_name }}</div>
                 <div class="assignment-cell">{{ assignment.name }}</div>
                 <div class="status-cell">{{ assignment.status }}</div>
-                <div>{{ assignment.due_date|default('N/A', true) }}</div>
+                <div>{{ assignment.due_date|format_due_date(assignment.status) }}</div>
                 <div>{{ assignment.score|default('N/A', true) }}</div>
             </div>
         {% endfor %}

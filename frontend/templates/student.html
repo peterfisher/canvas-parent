@@ -33,7 +33,7 @@
                                     <td>{{ assignment.name }}</td>
                                     <td>{{ assignment.status|default('Unknown', true) }}</td>
                                     <td>{{ assignment.score|default('N/A', true) }}</td>
-                                    <td>{{ assignment.due_date|default('N/A', true) }}</td>
+                                    <td>{{ assignment.due_date|format_due_date(assignment.status) }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>

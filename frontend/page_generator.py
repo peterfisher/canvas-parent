@@ -31,6 +31,7 @@ class PageGenerator:
         
         # Add custom filters
         self.env.filters['default'] = self._default_filter
+        self.env.filters['format_due_date'] = self._format_due_date
         
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
@@ -38,6 +39,45 @@ class PageGenerator:
     def _default_filter(self, value, default_value='', boolean=False):
         """Custom default filter for Jinja2 templates"""
         return default_value if not value else value
+    
+    def _format_due_date(self, due_date_str, status):
+        """
+        Format due date with specific formatting and days remaining for upcoming assignments
+        
+        Args:
+            due_date_str: ISO format date string from database
+            status: Assignment status (UPCOMING, etc.)
+            
+        Returns:
+            Formatted date string
+        """
+        if not due_date_str:
+            return 'N/A'
+        
+        try:
+            # Parse the date string from the database
+            due_date = datetime.datetime.fromisoformat(due_date_str.replace('Z', '+00:00'))
+            now = datetime.datetime.now()
+            
+            # Format base date as "Month Day, Year"
+            formatted_date = due_date.strftime("%B %d, %Y")
+            
+            # For upcoming assignments, add days remaining
+            if status == 'UPCOMING' and due_date > now:
+                days_remaining = (due_date.date() - now.date()).days
+                if days_remaining == 0:
+                    days_text = "due today"
+                elif days_remaining == 1:
+                    days_text = "1 day left"
+                else:
+                    days_text = f"{days_remaining} days left"
+                
+                return f"{formatted_date} ({days_text})"
+            else:
+                return formatted_date
+                
+        except (ValueError, TypeError, AttributeError):
+            return due_date_str or 'N/A'
         
     def get_db_connection(self) -> sqlite3.Connection:
         """Get a connection to the database"""
