@@ -38,24 +38,29 @@ def mock_html_row():
     """
 
 def test_parse_date_with_time(assignment_scraper):
-    """Test parsing dates with time."""
+    """Test parsing dates (time components are ignored)."""
     current_year = datetime.now().year
     
-    # Test various date formats
+    # Test various date formats - time components should be stripped
     test_cases = [
-        ("Mar 17 11:59PM", f"{current_year}-03-17 23:59:00"),
-        ("Apr 16 8:00AM", f"{current_year}-04-16 08:00:00"),
-        ("Dec 19 3:30PM", f"{current_year}-12-19 15:30:00"),
-        ("Jan 15 8:00AM", f"{current_year}-01-15 08:00:00"),
+        ("Mar 17 11:59PM", f"{current_year}-03-17 00:00:00"),
+        ("Apr 16 8:00AM", f"{current_year}-04-16 00:00:00"),
+        ("Dec 19 3:30PM", f"{current_year}-12-19 00:00:00"),
+        ("Jan 15 8:00AM", f"{current_year}-01-15 00:00:00"),
         # Test with explicit year
-        ("Mar 17 2025 11:59PM", "2025-03-17 23:59:00"),
-        ("Dec 19 2024 3:30PM", "2024-12-19 15:30:00")
+        ("Mar 17 2025 11:59PM", "2025-03-17 00:00:00"),
+        ("Dec 19 2024 3:30PM", "2024-12-19 00:00:00"),
+        # Test date-only formats
+        ("Mar 17", f"{current_year}-03-17 00:00:00"),
+        ("Dec 19 2024", "2024-12-19 00:00:00"),
+        ("3/17/2025", "2025-03-17 00:00:00"),
+        ("12.19.2024", "2024-12-19 00:00:00")
     ]
     
     for date_str, expected in test_cases:
         result = assignment_scraper._parse_date(date_str)
-        assert result is not None
-        assert result.strftime("%Y-%m-%d %H:%M:%S") == expected
+        assert result is not None, f"Failed to parse: {date_str}"
+        assert result.strftime("%Y-%m-%d %H:%M:%S") == expected, f"Wrong result for: {date_str}"
 
 def test_parse_date_invalid_formats(assignment_scraper):
     """Test parsing invalid date formats."""
@@ -91,8 +96,8 @@ def test_determine_assignment_type(assignment_scraper):
 
 def test_determine_status_specific_cases(assignment_scraper, mock_html_row):
     """Test specific status determination scenarios."""
-    future_date = (datetime.now() + timedelta(days=7)).strftime("%b %d %I:%M%p")
-    past_date = (datetime.now() - timedelta(days=7)).strftime("%b %d %I:%M%p")
+    future_date = (datetime.now() + timedelta(days=7)).strftime("%b %d")
+    past_date = (datetime.now() - timedelta(days=7)).strftime("%b %d")
     
     test_cases = [
         # Test EXCUSED status (highest priority)
@@ -374,4 +379,322 @@ def test_extract_data_invalid_html(assignment_scraper):
     assignment_scraper.set_page_content("<html><body>No assignments here</body></html>", "test_course_123")
     data = assignment_scraper.extract_data()
     assert "assignments" in data
-    assert len(data["assignments"]) == 0 
+    assert len(data["assignments"]) == 0
+
+def test_extract_structured_date_timezone_handling():
+    """Test that timezone-aware dates from JSON are properly converted to date-only datetime at midnight."""
+    html = '''
+    <html>
+        <script>
+            ENV = {
+                "assignment_groups": [
+                    {
+                        "assignments": [
+                            {
+                                "id": 123456,
+                                "due_at": "2024-12-25T23:59:00Z"
+                            }
+                        ]
+                    }
+                ]
+            };
+        </script>
+    </html>
+    '''
+    
+    scraper = AssignmentScraper()
+    scraper.set_page_content(html, "course123")
+    
+    # Extract the structured date
+    due_date = scraper._extract_structured_date("123456")
+    
+    # Should return a date-only datetime at midnight
+    assert due_date is not None
+    assert due_date.tzinfo is None  # Should be timezone-naive
+    assert due_date.year == 2024
+    assert due_date.month == 12
+    assert due_date.day == 25
+    assert due_date.hour == 0  # Should be midnight (date-only)
+    assert due_date.minute == 0
+
+def test_timezone_comparison_error_fix():
+    """Test that timezone-aware dates are handled properly."""
+    scraper = AssignmentScraper()
+    
+    # Create a mock HTML page with timezone-aware date
+    mock_html = """
+    <table>
+        <tr class="student_assignment">
+            <th class="title">
+                <a href="#">Test Assignment</a>
+            </th>
+            <td class="due">Mar 17 11:59PM</td>
+            <td class="submitted"></td>
+            <td class="status">
+                <span class="submission_status">submitted</span>
+            </td>
+            <td class="assignment_score">
+                <span class="grade">95</span>
+                <span> / 100</span>
+            </td>
+        </tr>
+    </table>
+    """
+    
+    scraper.set_page_content(mock_html, "test_course")
+    data = scraper.extract_data()
+    
+    # Should not raise any exceptions
+    assert "assignments" in data
+    assert len(data["assignments"]) == 1
+
+# New tests for refactored methods
+def test_get_env_data_caching(assignment_scraper):
+    """Test that ENV data is cached properly."""
+    mock_html = """
+    <html>
+        <script>
+            var ENV = {
+                "assignment_groups": [
+                    {
+                        "assignments": [
+                            {"id": 123, "due_at": "2024-03-17T23:59:59Z"}
+                        ]
+                    }
+                ]
+            };
+        </script>
+    </html>
+    """
+    
+    assignment_scraper.set_page_content(mock_html, "test_course")
+    
+    # First call should parse and cache
+    env_data1 = assignment_scraper._get_env_data()
+    assert env_data1 is not None
+    assert "assignment_groups" in env_data1
+    
+    # Second call should return cached data (same object reference)
+    env_data2 = assignment_scraper._get_env_data()
+    assert env_data1 is env_data2  # Same object reference indicates caching
+
+def test_script_contains_env_data(assignment_scraper):
+    """Test script filtering logic."""
+    from bs4 import BeautifulSoup
+    
+    # Valid script with ENV data
+    valid_script = BeautifulSoup('<script>var ENV = {"assignment_groups": []};</script>', 'html.parser').script
+    assert assignment_scraper._script_contains_env_data(valid_script) is True
+    
+    # Script without ENV
+    no_env_script = BeautifulSoup('<script>var OTHER = {};</script>', 'html.parser').script
+    assert assignment_scraper._script_contains_env_data(no_env_script) is False
+    
+    # Script without assignment_groups
+    no_groups_script = BeautifulSoup('<script>var ENV = {"other": []};</script>', 'html.parser').script
+    assert assignment_scraper._script_contains_env_data(no_groups_script) is False
+    
+    # Script with no content
+    empty_script = BeautifulSoup('<script></script>', 'html.parser').script
+    assert assignment_scraper._script_contains_env_data(empty_script) is False
+
+def test_find_due_date_in_assignment_groups(assignment_scraper):
+    """Test finding due dates in assignment groups."""
+    env_data = {
+        "assignment_groups": [
+            {
+                "assignments": [
+                    {"id": 123, "due_at": "2024-03-17T23:59:59Z"},
+                    {"id": 456, "due_at": None}
+                ]
+            },
+            {
+                "assignments": [
+                    {"id": 789, "due_at": "2024-04-15T11:59:59Z"}
+                ]
+            }
+        ]
+    }
+    
+    # Found assignment
+    result = assignment_scraper._find_due_date_in_assignment_groups(env_data, "123")
+    assert result is not None
+    assert result == datetime(2024, 3, 17)
+    
+    # Assignment with null due_at
+    result = assignment_scraper._find_due_date_in_assignment_groups(env_data, "456")
+    assert result is None
+    
+    # Assignment in second group
+    result = assignment_scraper._find_due_date_in_assignment_groups(env_data, "789")
+    assert result is not None
+    assert result == datetime(2024, 4, 15)
+    
+    # Non-existent assignment
+    result = assignment_scraper._find_due_date_in_assignment_groups(env_data, "999")
+    assert result is None
+
+def test_find_due_date_in_effective_dates(assignment_scraper):
+    """Test finding due dates in effective dates."""
+    env_data = {
+        "effective_due_dates": {
+            "123": {
+                "student_1": {"due_at": "2024-03-17T23:59:59Z"},
+                "student_2": {"due_at": "2024-03-18T23:59:59Z"}
+            },
+            "456": {
+                "student_1": {"due_at": None}
+            }
+        }
+    }
+    
+    # Found assignment with effective date
+    result = assignment_scraper._find_due_date_in_effective_dates(env_data, "123")
+    assert result is not None
+    assert result == datetime(2024, 3, 17)  # Should return first valid date
+    
+    # Assignment with null due_at
+    result = assignment_scraper._find_due_date_in_effective_dates(env_data, "456")
+    assert result is None
+    
+    # Non-existent assignment
+    result = assignment_scraper._find_due_date_in_effective_dates(env_data, "999")
+    assert result is None
+
+def test_parse_iso_date_to_datetime(assignment_scraper):
+    """Test ISO date parsing."""
+    # Valid ISO date
+    result = assignment_scraper._parse_iso_date_to_datetime("2024-03-17T23:59:59Z")
+    assert result == datetime(2024, 3, 17)
+    
+    # Valid ISO date without timezone
+    result = assignment_scraper._parse_iso_date_to_datetime("2024-03-17T23:59:59")
+    assert result == datetime(2024, 3, 17)
+    
+    # Valid date without time
+    result = assignment_scraper._parse_iso_date_to_datetime("2024-03-17")
+    assert result == datetime(2024, 3, 17)
+    
+    # Invalid date
+    result = assignment_scraper._parse_iso_date_to_datetime("invalid-date")
+    assert result is None
+    
+    # Empty string
+    result = assignment_scraper._parse_iso_date_to_datetime("")
+    assert result is None
+
+def test_extract_structured_date_integration(assignment_scraper):
+    """Test the full structured date extraction with realistic HTML."""
+    mock_html = """
+    <html>
+        <script>
+            var ENV = {
+                "assignment_groups": [
+                    {
+                        "assignments": [
+                            {"id": 123, "due_at": "2024-03-17T23:59:59Z"},
+                            {"id": 456, "due_at": null}
+                        ]
+                    }
+                ],
+                "effective_due_dates": {
+                    "789": {
+                        "student_1": {"due_at": "2024-04-15T11:59:59Z"}
+                    }
+                }
+            };
+        </script>
+    </html>
+    """
+    
+    assignment_scraper.set_page_content(mock_html, "test_course")
+    
+    # Test assignment in assignment_groups
+    result = assignment_scraper._extract_structured_date("123")
+    assert result == datetime(2024, 3, 17)
+    
+    # Test assignment with null due_at should fall back to effective_due_dates
+    result = assignment_scraper._extract_structured_date("789")
+    assert result == datetime(2024, 4, 15)
+    
+    # Test non-existent assignment
+    result = assignment_scraper._extract_structured_date("999")
+    assert result is None
+    
+    # Test with empty assignment_id
+    result = assignment_scraper._extract_structured_date("")
+    assert result is None
+
+def test_extract_structured_date_malformed_json(assignment_scraper):
+    """Test handling of malformed JSON in scripts."""
+    mock_html = """
+    <html>
+        <script>
+            var ENV = { malformed json };
+        </script>
+        <script>
+            var ENV = {
+                "assignment_groups": [
+                    {
+                        "assignments": [
+                            {"id": 123, "due_at": "2024-03-17T23:59:59Z"}
+                        ]
+                    }
+                ]
+            };
+        </script>
+    </html>
+    """
+    
+    assignment_scraper.set_page_content(mock_html, "test_course")
+    
+    # Should skip malformed JSON and use valid one
+    result = assignment_scraper._extract_structured_date("123")
+    assert result == datetime(2024, 3, 17)
+
+def test_extract_structured_date_no_soup(assignment_scraper):
+    """Test extraction when no soup is set."""
+    # Don't set any page content
+    result = assignment_scraper._extract_structured_date("123")
+    assert result is None
+
+def test_extract_env_data_from_scripts_performance(assignment_scraper):
+    """Test that script parsing stops at first valid ENV data."""
+    # Create HTML with multiple scripts, first one should be used
+    mock_html = """
+    <html>
+        <script>
+            var OTHER = {};
+        </script>
+        <script>
+            var ENV = {
+                "assignment_groups": [
+                    {
+                        "assignments": [
+                            {"id": 123, "due_at": "2024-03-17T23:59:59Z"}
+                        ]
+                    }
+                ]
+            };
+        </script>
+        <script>
+            var ENV = {
+                "assignment_groups": [
+                    {
+                        "assignments": [
+                            {"id": 456, "due_at": "2024-04-15T23:59:59Z"}
+                        ]
+                    }
+                ]
+            };
+        </script>
+    </html>
+    """
+    
+    assignment_scraper.set_page_content(mock_html, "test_course")
+    
+    # Should get data from first valid ENV script
+    env_data = assignment_scraper._extract_env_data_from_scripts()
+    assert env_data is not None
+    assert len(env_data["assignment_groups"]) == 1
+    assert env_data["assignment_groups"][0]["assignments"][0]["id"] == 123 

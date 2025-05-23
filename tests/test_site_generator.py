@@ -8,128 +8,128 @@ import shutil
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from frontend.generate_site import SiteGenerator
+from frontend.page_generator import PageGenerator
 
 
 class TestSiteGenerator(unittest.TestCase):
-    """Test cases for the SiteGenerator class."""
+    """Test cases for the PageGenerator class."""
     
     def setUp(self):
         """Set up test environment."""
         # Create a temporary directory for output
         self.temp_dir = tempfile.mkdtemp()
         
-        # Mock the file system paths
-        self.templates_dir_patcher = patch('os.path.join')
-        self.mock_path_join = self.templates_dir_patcher.start()
+        # Create a mock template directory
+        self.template_dir = tempfile.mkdtemp()
         
-        # Return the temp directory for output dir
-        def mock_join(dirname, *args):
-            if args[0] == 'website':
-                return self.temp_dir
-            elif args[0] == 'templates':
-                return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-                                   'frontend', 'templates')
-            elif args[0] == 'static':
-                return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-                                   'frontend', 'static')
-            else:
-                return os.path.join(dirname, *args)
-        
-        self.mock_path_join.side_effect = mock_join
+        # Create a temporary database file
+        self.db_path = os.path.join(self.temp_dir, 'test.db')
     
     def tearDown(self):
         """Clean up after tests."""
-        # Remove the temporary directory
+        # Remove the temporary directories
         shutil.rmtree(self.temp_dir)
-        
-        # Stop the patchers
-        self.templates_dir_patcher.stop()
+        shutil.rmtree(self.template_dir)
     
-    @patch('frontend.generate_site.Environment')
-    @patch('frontend.generate_site.FileSystemLoader')
-    def test_init(self, mock_file_loader, mock_env):
-        """Test initialization of SiteGenerator."""
-        generator = SiteGenerator()
+    @patch('jinja2.Environment')
+    @patch('jinja2.FileSystemLoader')
+    @patch('os.makedirs')
+    def test_init(self, mock_makedirs, mock_file_loader, mock_env):
+        """Test initialization of PageGenerator."""
+        generator = PageGenerator(
+            db_path=self.db_path,
+            template_dir=self.template_dir,
+            output_dir=self.temp_dir
+        )
         
-        # Check that the environment is set up correctly
-        mock_file_loader.assert_called_once()
-        mock_env.assert_called_once_with(loader=mock_file_loader.return_value)
+        # Check that the Jinja2 environment is set up correctly
+        mock_file_loader.assert_called_once_with(self.template_dir)
+        mock_env.assert_called_once()
         
-        # Check that the output directory exists
-        self.assertTrue(os.path.exists(self.temp_dir))
+        # Check that makedirs was called for output directory
+        mock_makedirs.assert_called_once_with(self.temp_dir, exist_ok=True)
+        
+        # Check instance variables
+        self.assertEqual(generator.db_path, self.db_path)
+        self.assertEqual(generator.template_dir, self.template_dir)
+        self.assertEqual(generator.output_dir, self.temp_dir)
     
-    @patch('frontend.generate_site.Environment')
-    @patch('frontend.generate_site.FileSystemLoader')
-    @patch('frontend.generate_site.get_db')
-    def test_generate_index_page(self, mock_get_db, mock_file_loader, mock_env):
+    @patch('jinja2.Environment')
+    @patch('jinja2.FileSystemLoader')
+    @patch('os.makedirs')
+    def test_generate_index_page(self, mock_makedirs, mock_file_loader, mock_env):
         """Test generation of index page."""
-        # Mock the database session
-        mock_db = MagicMock()
-        mock_get_db.return_value.__next__.return_value = mock_db
-        
         # Mock the template
         mock_template = MagicMock()
         mock_env.return_value.get_template.return_value = mock_template
+        mock_template.render.return_value = "<html>Test Index</html>"
         
-        # Mock the students
-        student1 = MagicMock()
-        student1.id = 1
-        student1.name = "Test Student 1"
+        # Create the generator
+        generator = PageGenerator(
+            db_path=self.db_path,
+            template_dir=self.template_dir,
+            output_dir=self.temp_dir
+        )
         
-        student2 = MagicMock()
-        student2.id = 2
-        student2.name = "Test Student 2"
-        
-        students = [student1, student2]
-        
-        # Mock courses and assignments
-        course = MagicMock()
-        course.id = 1
-        mock_db.query.return_value.filter.return_value.all.side_effect = [
-            [course],  # Courses for student 1
-            [],  # Assignments for course 1
-            [],  # Courses for student 2
-        ]
-        
-        # Create the generator and call generate_index_page
-        generator = SiteGenerator()
-        generator.generate_index_page(students, mock_db)
-        
-        # Check that the template was rendered
-        mock_env.return_value.get_template.assert_called_with('index.html')
-        mock_template.render.assert_called_once()
-        
-        # Check that the render call included student data
-        render_kwargs = mock_template.render.call_args[1]
-        self.assertIn('students', render_kwargs)
-        self.assertEqual(len(render_kwargs['students']), 2)
-        
-        # Check that the output file was written
-        mock_open_name = 'frontend.generate_site.open'
-        with patch(mock_open_name, mock_open()) as mock_file:
-            generator.generate_index_page(students, mock_db)
-            mock_file.assert_called_once_with(os.path.join(self.temp_dir, 'index.html'), 'w')
-            mock_file().write.assert_called_once_with(mock_template.render.return_value)
+        # Mock the get_students method
+        with patch.object(generator, 'get_students') as mock_get_students:
+            mock_get_students.return_value = [
+                {'id': 1, 'name': 'Test Student 1'},
+                {'id': 2, 'name': 'Test Student 2'}
+            ]
+            
+            # Mock the write_file method
+            with patch.object(generator, 'write_file') as mock_write_file:
+                generator.generate_index_page()
+                
+                # Check that get_students was called
+                mock_get_students.assert_called_once()
+                
+                # Check that the template was rendered with correct context
+                mock_env.return_value.get_template.assert_called_with('index.html')
+                mock_template.render.assert_called_once()
+                render_kwargs = mock_template.render.call_args[1]
+                self.assertIn('students', render_kwargs)
+                self.assertIn('title', render_kwargs)
+                self.assertEqual(len(render_kwargs['students']), 2)
+                
+                # Check that the file was written
+                expected_path = os.path.join(self.temp_dir, 'index.html')
+                mock_write_file.assert_called_once_with(expected_path, "<html>Test Index</html>")
     
-    @patch('frontend.generate_site.shutil.copytree')
-    @patch('frontend.generate_site.shutil.rmtree')
-    @patch('frontend.generate_site.os.path.exists')
-    @patch('frontend.generate_site.Environment')
-    @patch('frontend.generate_site.FileSystemLoader')
-    def test_copy_static_files(self, mock_file_loader, mock_env, 
-                               mock_exists, mock_rmtree, mock_copytree):
+    @patch('jinja2.Environment')
+    @patch('jinja2.FileSystemLoader')
+    @patch('os.makedirs')
+    @patch('shutil.copytree')
+    @patch('shutil.rmtree')
+    @patch('shutil.copy2')
+    @patch('os.path.exists')
+    @patch('os.listdir')
+    @patch('os.path.isdir')
+    def test_copy_static_files(self, mock_isdir, mock_listdir, mock_exists, 
+                               mock_copy2, mock_rmtree, mock_copytree, 
+                               mock_makedirs, mock_file_loader, mock_env):
         """Test copying of static files."""
         # Mock os.path.exists to return True for static directory
         mock_exists.return_value = True
+        mock_listdir.return_value = ['style.css', 'script.js']
+        mock_isdir.return_value = False  # Treat all items as files
         
-        # Create the generator and call copy_static_files
-        generator = SiteGenerator()
+        # Create the generator
+        generator = PageGenerator(
+            db_path=self.db_path,
+            template_dir=self.template_dir,
+            output_dir=self.temp_dir
+        )
+        
         generator.copy_static_files()
         
-        # Check that the static directory was copied
-        mock_rmtree.assert_called_once()
-        mock_copytree.assert_called_once()
+        # Check that the static directory existence was checked
+        expected_static_dir = os.path.join(self.template_dir, 'static')
+        mock_exists.assert_called_with(expected_static_dir)
+        
+        # Check that files were copied
+        self.assertEqual(mock_copy2.call_count, 2)
 
 
 if __name__ == '__main__':
