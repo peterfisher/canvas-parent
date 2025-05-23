@@ -45,6 +45,7 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
+frontend/website/
 .cursor/
 config.ini
 
