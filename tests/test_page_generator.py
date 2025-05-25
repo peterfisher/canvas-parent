@@ -268,6 +268,128 @@ class TestPageGenerator(unittest.TestCase):
             </div>'''
         self.assertEqual(result, expected)
 
+    def test_group_assignments_into_sections(self):
+        """Test assignment grouping and sorting within sections"""
+        # Create test assignments with different statuses and due dates
+        test_assignments = [
+            {
+                'name': 'Future Assignment 1',
+                'status': 'UPCOMING',
+                'due_date': (datetime.now() + timedelta(days=2)).isoformat(),
+                'course_name': 'Math'
+            },
+            {
+                'name': 'Future Assignment 2',
+                'status': 'UPCOMING',
+                'due_date': (datetime.now() + timedelta(days=1)).isoformat(),
+                'course_name': 'Science'
+            },
+            {
+                'name': 'Graded Assignment 1',
+                'status': 'GRADED',
+                'due_date': (datetime.now() - timedelta(days=3)).isoformat(),
+                'course_name': 'English'
+            },
+            {
+                'name': 'Submitted Assignment',
+                'status': 'SUBMITTED',
+                'due_date': (datetime.now() - timedelta(days=1)).isoformat(),
+                'course_name': 'History'
+            },
+            {
+                'name': 'Late Assignment',
+                'status': 'LATE',
+                'due_date': (datetime.now() - timedelta(days=5)).isoformat(),
+                'course_name': 'Art'
+            },
+            {
+                'name': 'Missing Assignment',
+                'status': 'MISSING',
+                'due_date': (datetime.now() - timedelta(days=7)).isoformat(),
+                'course_name': 'PE'
+            },
+            {
+                'name': 'Unknown Assignment',
+                'status': 'UNKNOWN',
+                'due_date': None,
+                'course_name': 'Music'
+            },
+            {
+                'name': 'Excused Assignment',
+                'status': 'EXCUSED',
+                'due_date': (datetime.now() - timedelta(days=2)).isoformat(),
+                'course_name': 'Biology'
+            }
+        ]
+        
+        # Test the grouping function
+        sections = self.page_generator._group_assignments_into_sections(test_assignments)
+        
+        # Verify section structure
+        self.assertIn('upcoming', sections)
+        self.assertIn('graded', sections)
+        self.assertIn('missing', sections)
+        self.assertIn('unknown', sections)
+        
+        # Verify upcoming section
+        upcoming_section = sections['upcoming']
+        self.assertEqual(upcoming_section['title'], 'Upcoming Assignments')
+        self.assertEqual(upcoming_section['count'], 2)
+        self.assertEqual(len(upcoming_section['assignments']), 2)
+        
+        # Verify upcoming assignments are sorted by due date (soonest first)
+        upcoming_assignments = upcoming_section['assignments']
+        self.assertEqual(upcoming_assignments[0]['name'], 'Future Assignment 2')  # 1 day away (soonest)
+        self.assertEqual(upcoming_assignments[1]['name'], 'Future Assignment 1')  # 2 days away
+        
+        # Verify graded section includes GRADED, SUBMITTED, EXCUSED, LATE
+        graded_section = sections['graded']
+        self.assertEqual(graded_section['title'], 'Graded Assignments')
+        self.assertEqual(graded_section['count'], 4)
+        graded_assignment_names = [a['name'] for a in graded_section['assignments']]
+        self.assertIn('Graded Assignment 1', graded_assignment_names)
+        self.assertIn('Submitted Assignment', graded_assignment_names)
+        self.assertIn('Late Assignment', graded_assignment_names)
+        self.assertIn('Excused Assignment', graded_assignment_names)
+        
+        # Verify graded assignments are sorted by due date (newest first)
+        graded_assignments = graded_section['assignments']
+        expected_order = ['Submitted Assignment', 'Excused Assignment', 'Graded Assignment 1', 'Late Assignment']
+        actual_order = [a['name'] for a in graded_assignments]
+        self.assertEqual(actual_order, expected_order)
+        
+        # Verify missing section includes only MISSING
+        missing_section = sections['missing']
+        self.assertEqual(missing_section['title'], 'Missing Assignments')
+        self.assertEqual(missing_section['count'], 1)
+        missing_assignment_names = [a['name'] for a in missing_section['assignments']]
+        self.assertIn('Missing Assignment', missing_assignment_names)
+        
+        # Verify unknown section includes only UNKNOWN
+        unknown_section = sections['unknown']
+        self.assertEqual(unknown_section['title'], 'Unknown Assignments')
+        self.assertEqual(unknown_section['count'], 1)
+        unknown_assignment_names = [a['name'] for a in unknown_section['assignments']]
+        self.assertIn('Unknown Assignment', unknown_assignment_names)
+        
+        # Verify assignments with None due_date come last in sorting
+        unknown_assignments = unknown_section['assignments']
+        self.assertEqual(unknown_assignments[0]['name'], 'Unknown Assignment')  # None due date
+        
+    def test_group_assignments_empty_list(self):
+        """Test assignment grouping with empty list"""
+        sections = self.page_generator._group_assignments_into_sections([])
+        
+        # Verify all sections exist but are empty
+        self.assertEqual(sections['upcoming']['count'], 0)
+        self.assertEqual(sections['graded']['count'], 0)
+        self.assertEqual(sections['missing']['count'], 0)
+        self.assertEqual(sections['unknown']['count'], 0)
+        self.assertEqual(len(sections['upcoming']['assignments']), 0)
+        self.assertEqual(len(sections['graded']['assignments']), 0)
+        self.assertEqual(len(sections['missing']['assignments']), 0)
+        self.assertEqual(len(sections['unknown']['assignments']), 0)
+
 
 if __name__ == '__main__':
     unittest.main() 

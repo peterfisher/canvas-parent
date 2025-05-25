@@ -171,6 +171,88 @@
     .status-cell, .course-cell, .assignment-cell {
         text-align: center;
     }
+    
+    /* Section styling */
+    .assignment-section {
+        margin-bottom: 30px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .section-header {
+        background-color: var(--secondary-color);
+        padding: 15px 20px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+        transition: background-color 0.2s;
+    }
+    
+    .section-header:hover {
+        background-color: #e8e9ea;
+    }
+    
+    .section-title {
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+    
+    .section-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .section-count {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+    
+    .collapse-icon {
+        font-size: 1.2em;
+        transition: transform 0.3s;
+    }
+    
+    .section-content {
+        max-height: 2000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+    }
+    
+    .section-content.collapsed {
+        max-height: 0;
+    }
+    
+    .section-header.collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
+    
+    .section-assignments {
+        background-color: white;
+    }
+    
+    .section-column-headers {
+        display: grid;
+        grid-template-columns: 40px 1fr 1fr 1fr 1fr 1fr;
+        padding: 15px;
+        background-color: #f8f9fa;
+        font-weight: bold;
+        border-bottom: 2px solid var(--border-color);
+    }
+    
+    .empty-section {
+        padding: 30px 20px;
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
@@ -196,47 +278,91 @@
         <h3>Assignments</h3>
     </div>
     
-    <!-- Assignment list -->
-    {% if assignments %}
-        <!-- Column headers -->
-        <div class="assignment-row" style="font-weight: bold; background-color: var(--secondary-color);">
-            <div></div>
-            <div class="course-cell">Course</div>
-            <div class="assignment-cell">Assignment</div>
-            <div class="status-cell">Assignment Status</div>
-            <div>Assignment Due Date</div>
-            <div class="score-cell">Score</div>
-        </div>
-        
-        <!-- Assignment rows -->
-        {% for assignment in assignments %}
-            <div class="assignment-row">
-                <div>
-                    {% if assignment.status == 'EXCUSED' %}
-                        <span class="status-indicator status-excused"></span>
-                    {% elif assignment.status == 'LATE' %}
-                        <span class="status-indicator status-late"></span>
-                    {% elif assignment.status == 'GRADED' %}
-                        <span class="status-indicator status-graded"></span>
-                    {% elif assignment.status == 'SUBMITTED' %}
-                        <span class="status-indicator status-submitted"></span>
-                    {% elif assignment.status == 'UPCOMING' %}
-                        <span class="status-indicator status-upcoming"></span>
-                    {% elif assignment.status == 'MISSING' %}
-                        <span class="status-indicator status-missing"></span>
+    <!-- Assignment sections -->
+    {% if assignment_sections %}
+        {% for section_key, section_data in [('missing', assignment_sections.missing), ('upcoming', assignment_sections.upcoming), ('graded', assignment_sections.graded), ('unknown', assignment_sections.unknown)] %}
+            <div class="assignment-section">
+                <div class="section-header" onclick="toggleSection('{{ section_key }}')">
+                    <div class="section-title">{{ section_data.title }}</div>
+                    <div class="section-info">
+                        <span class="section-count">{{ section_data.count }}</span>
+                        <span class="collapse-icon" id="{{ section_key }}-icon">▼</span>
+                    </div>
+                </div>
+                <div class="section-content" id="{{ section_key }}-content">
+                    {% if section_data.assignments %}
+                        <div class="section-assignments">
+                            <!-- Column headers -->
+                            <div class="section-column-headers">
+                                <div></div>
+                                <div class="course-cell">Course</div>
+                                <div class="assignment-cell">Assignment</div>
+                                <div class="status-cell">Assignment Status</div>
+                                <div>Assignment Due Date</div>
+                                <div class="score-cell">Score</div>
+                            </div>
+                            
+                            <!-- Assignment rows -->
+                            {% for assignment in section_data.assignments %}
+                                <div class="assignment-row">
+                                    <div>
+                                        {% if assignment.status == 'EXCUSED' %}
+                                            <span class="status-indicator status-excused"></span>
+                                        {% elif assignment.status == 'LATE' %}
+                                            <span class="status-indicator status-late"></span>
+                                        {% elif assignment.status == 'GRADED' %}
+                                            <span class="status-indicator status-graded"></span>
+                                        {% elif assignment.status == 'SUBMITTED' %}
+                                            <span class="status-indicator status-submitted"></span>
+                                        {% elif assignment.status == 'UPCOMING' %}
+                                            <span class="status-indicator status-upcoming"></span>
+                                        {% elif assignment.status == 'MISSING' %}
+                                            <span class="status-indicator status-missing"></span>
+                                        {% else %}
+                                            <span class="status-indicator status-unknown"></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="course-cell">{{ assignment.course_name }}</div>
+                                    <div class="assignment-cell">{{ assignment.name }}</div>
+                                    <div class="status-cell">{{ assignment.status }}</div>
+                                    <div>{{ assignment.due_date|format_due_date(assignment.status) }}</div>
+                                    <div class="score-cell">{{ assignment.score|format_score(assignment.max_score)|safe }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
                     {% else %}
-                        <span class="status-indicator status-unknown"></span>
+                        <div class="empty-section">
+                            No assignments in this category
+                        </div>
                     {% endif %}
                 </div>
-                <div class="course-cell">{{ assignment.course_name }}</div>
-                <div class="assignment-cell">{{ assignment.name }}</div>
-                <div class="status-cell">{{ assignment.status }}</div>
-                <div>{{ assignment.due_date|format_due_date(assignment.status) }}</div>
-                <div class="score-cell">{{ assignment.score|format_score(assignment.max_score)|safe }}</div>
             </div>
         {% endfor %}
     {% else %}
         <p>No assignments found.</p>
     {% endif %}
 </div>
+
+<script>
+function toggleSection(sectionId) {
+    const content = document.getElementById(sectionId + '-content');
+    const icon = document.getElementById(sectionId + '-icon');
+    const header = content.previousElementSibling;
+    
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+        icon.textContent = '▼';
+    } else {
+        content.classList.add('collapsed');
+        header.classList.add('collapsed');
+        icon.textContent = '▶';
+    }
+}
+
+// Initialize all sections as expanded by default
+document.addEventListener('DOMContentLoaded', function() {
+    // All sections start expanded, no action needed
+});
+</script>
 {% endblock %} 

@@ -334,6 +334,9 @@ class PageGenerator:
         assignments = self.get_all_assignments(student_id)
         sync_info = self.get_last_sync_info()
         
+        # Group assignments into sections
+        assignment_sections = self._group_assignments_into_sections(assignments)
+        
         # Format the sync timestamp if available
         last_sync = None
         if sync_info.get('timestamp'):
@@ -344,7 +347,7 @@ class PageGenerator:
                 last_sync = sync_info['timestamp']
         
         html_content = self.render_template('assignments.html', {
-            'assignments': assignments,
+            'assignment_sections': assignment_sections,
             'last_sync': last_sync,
             'sync_status': sync_info.get('status')
         })
@@ -359,6 +362,75 @@ class PageGenerator:
             output_path = os.path.join(self.output_dir, 'assignments.html')
         
         self.write_file(output_path, html_content)
+    
+    def _group_assignments_into_sections(self, assignments: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Group assignments into sections based on their status and sort by due date
+        
+        Args:
+            assignments: List of assignment dictionaries
+            
+        Returns:
+            Dictionary with sections as keys and sorted assignment lists as values
+        """
+        upcoming = []
+        graded = []
+        missing = []
+        unknown = []
+        
+        for assignment in assignments:
+            status = assignment.get('status', 'UNKNOWN')
+            
+            # Categorize based on status
+            if status in ['UPCOMING']:
+                upcoming.append(assignment)
+            elif status in ['GRADED', 'SUBMITTED', 'EXCUSED', 'LATE']:
+                graded.append(assignment)
+            elif status in ['MISSING']:
+                missing.append(assignment)
+            else:  # UNKNOWN and any other status
+                unknown.append(assignment)
+        
+        # Sort each section by due date (with None dates last)
+        def sort_key(assignment):
+            due_date = assignment.get('due_date')
+            if due_date is None:
+                return (1, datetime.datetime.max)  # None dates go to the end
+            try:
+                parsed_date = datetime.datetime.fromisoformat(due_date.replace('Z', '+00:00'))
+                return (0, parsed_date)
+            except (ValueError, TypeError, AttributeError):
+                return (1, datetime.datetime.max)
+        
+        # Sort upcoming assignments by earliest due date first (soonest at top)
+        upcoming.sort(key=sort_key, reverse=False)
+        # Sort other sections by newest first
+        graded.sort(key=sort_key, reverse=True)
+        missing.sort(key=sort_key, reverse=True)
+        unknown.sort(key=sort_key, reverse=True)
+        
+        return {
+            'upcoming': {
+                'title': 'Upcoming Assignments',
+                'assignments': upcoming,
+                'count': len(upcoming)
+            },
+            'graded': {
+                'title': 'Graded Assignments',
+                'assignments': graded,
+                'count': len(graded)
+            },
+            'missing': {
+                'title': 'Missing Assignments',
+                'assignments': missing,
+                'count': len(missing)
+            },
+            'unknown': {
+                'title': 'Unknown Assignments',
+                'assignments': unknown,
+                'count': len(unknown)
+            }
+        }
     
     def generate_all_pages(self) -> None:
         """Generate all pages for the website"""
