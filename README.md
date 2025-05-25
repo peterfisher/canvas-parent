@@ -2,7 +2,9 @@
 
 ## Project Description
 
-The overall purpose of this system is to help parents quickly inform themselves of their students' grades and identify where there might be missing assignments. 
+Purpose of this system is to help parents quickly inform themselves of their students' grades and identify where there might be missing assignments. 
+
+Created with claude-3.5 and claude-4-sonnet. Made on a Mac.
 
 ## Usage
 
