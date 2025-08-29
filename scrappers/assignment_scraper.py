@@ -77,9 +77,9 @@ class AssignmentScraper(BaseScraper):
 
     def _find_due_date_in_effective_dates(self, env_data: Dict, assignment_id: str) -> Optional[datetime]:
         """Find due date in effective due dates data."""
-        effective_dates = env_data.get('effective_due_dates', {})
+        effective_dates = env_data.get('effective_due_dates')
         
-        if assignment_id not in effective_dates:
+        if not effective_dates or assignment_id not in effective_dates:
             return None
         
         # Effective dates have student IDs as keys
@@ -347,19 +347,49 @@ class AssignmentScraper(BaseScraper):
             if not grade_span:
                 return None, None
                 
+            # Extract score text - handle nested spans by getting all text and cleaning it
+            score_text = grade_span.get_text(separator=' ', strip=True)
+            
             # Check if the grade is excused
-            if grade_span.text.strip() == "EX":
+            if score_text == "EX":
                 return None, None
                 
-            # Get the actual score
-            score_text = grade_span.text.strip()
-            score = float(score_text) if score_text and score_text != "EX" else None
+            if not score_text:
+                return None, None
+                
+            # Handle percentage-based scores (e.g., "87%", "92.5%")
+            if score_text.endswith('%'):
+                try:
+                    percentage = float(score_text[:-1])  # Remove % and convert to float
+                    # For percentage grades, we store the percentage as both score and max_score=100
+                    # This allows the frontend to display "F • 50%" format
+                    return percentage, 100.0
+                except ValueError:
+                    pass
             
-            # Get the max score
-            max_score_span = score_cell.find("span", string=lambda s: s and "/" in s)
-            if max_score_span:
-                max_score = float(max_score_span.text.strip("/ "))
-                return score, max_score
+            # Handle traditional fraction-based scores
+            # Extract numeric value from potentially complex text (e.g., "12" from nested spans)
+            import re
+            score_match = re.search(r'(\d+(?:\.\d+)?)', score_text)
+            if score_match:
+                try:
+                    score = float(score_match.group(1))
+                    
+                    # Get the max score from a separate span with "/" pattern
+                    max_score_span = score_cell.find("span", string=lambda s: s and "/" in s)
+                    if max_score_span:
+                        max_score_text = max_score_span.text.strip()
+                        max_score_match = re.search(r'/\s*(\d+(?:\.\d+)?)', max_score_text)
+                        if max_score_match:
+                            max_score = float(max_score_match.group(1))
+                            return score, max_score
+                    
+                    # If no max score found, this might be a standalone score
+                    # We'll return it as-is, frontend can handle display
+                    return score, None
+                        
+                except ValueError:
+                    pass
                 
         except (ValueError, AttributeError):
             pass
@@ -376,16 +406,37 @@ class AssignmentScraper(BaseScraper):
 
         for row in assignment_rows:
             try:
+                # Skip special rows (group totals, final grade)
+                row_id = row.get('id', '')
+                if (row_id.startswith('submission_group-') or 
+                    row_id == 'submission_final-grade' or
+                    'group_total' in row.get('class', []) or
+                    'final_grade' in row.get('class', [])):
+                    continue
+
                 # Extract basic information
                 title_cell = row.find("th", class_="title")
                 if not title_cell:
                     continue
 
+                # Try to find assignment name - first try <a> tag, then fallback to title cell text
                 name_link = title_cell.find("a")
-                if not name_link:
+                if name_link:
+                    name = name_link.text.strip()
+                else:
+                    # Fallback: get text from title cell directly (excluding context div)
+                    context_div = title_cell.find("div", class_="context")
+                    if context_div:
+                        # Clone the title cell and remove the context div to get just the name
+                        title_text = title_cell.get_text(separator=' ', strip=True)
+                        context_text = context_div.get_text(separator=' ', strip=True)
+                        name = title_text.replace(context_text, '').strip()
+                    else:
+                        name = title_cell.get_text(separator=' ', strip=True)
+                
+                if not name:
                     continue
 
-                name = name_link.text.strip()
                 context_div = title_cell.find("div", class_="context")
                 context = context_div.text.strip() if context_div else ""
                 assignment_type = self._determine_assignment_type(context)

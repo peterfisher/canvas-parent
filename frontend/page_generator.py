@@ -82,14 +82,14 @@ class PageGenerator:
         
     def _format_score(self, score, max_score):
         """
-        Format assignment score with American letter grade and fraction
+        Format assignment score with American letter grade and percentage or fraction
         
         Args:
             score: Numeric score received (can be None)
             max_score: Maximum possible points (can be None)
             
         Returns:
-            Formatted score string with letter grade and fraction
+            Formatted score string with letter grade and percentage/fraction
         """
         # If no score, return dash aligned with center dot position
         if score is None or max_score is None:
@@ -126,14 +126,22 @@ class PageGenerator:
                 letter_grade = 'F'
                 grade_class = 'grade-f'
             
-            # Format score as fraction (remove .0 if whole numbers)
-            score_str = f"{score:g}"  # :g removes trailing zeros
-            max_score_str = f"{max_score:g}"
+            # For percentage-based grades (max_score = 100), display as "F • 50%"
+            # For traditional scores, display as fraction "A • 18/20"
+            if max_score == 100.0:
+                # This is a percentage-based grade, display as percentage
+                percentage_str = f"{score:g}%"  # :g removes trailing zeros
+                score_display = percentage_str
+            else:
+                # Traditional fraction-based score
+                score_str = f"{score:g}"  # :g removes trailing zeros
+                max_score_str = f"{max_score:g}"
+                score_display = f"{score_str}/{max_score_str}"
             
             return f'''<div class="score-container">
                 <span class="letter-grade {grade_class} grade-letter">{letter_grade}</span>
                 <span class="grade-separator">•</span>
-                <span class="score-fraction grade-fraction">{score_str}/{max_score_str}</span>
+                <span class="score-fraction grade-fraction">{score_display}</span>
             </div>'''
             
         except (ValueError, TypeError):
