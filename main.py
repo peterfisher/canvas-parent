@@ -3,9 +3,9 @@
 import logging
 from load_config import load_config
 from login import login_to_canvas
-from grade_scraper import create_grade_scraper
-from grades import parse_grades
-from display import display_grades
+from canvas_session_manager import create_grade_scraper
+from data_models import parse_grades
+from grade_formatter import display_grades
 from datetime import datetime
 from init_database import init_student
 from database import get_db, init_db

@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch, MagicMock
 from bs4 import BeautifulSoup
 from datetime import datetime
 import os
-from grade_scraper import GradeScraper, create_grade_scraper, ScrapingResult
+from canvas_session_manager import GradeScraper, create_grade_scraper, ScrapingResult
 from database.models import Student
 from scrappers import AssignmentScraper
 
@@ -39,7 +39,7 @@ def grade_scraper(mock_session, mock_db_manager, monkeypatch):
     """Create a GradeScraper instance with mocked dependencies."""
     # Mock the database session creation
     mock_db = Mock()
-    monkeypatch.setattr("grade_scraper.get_db", lambda: iter([mock_db]))
+    monkeypatch.setattr("canvas_session_manager.get_db", lambda: iter([mock_db]))
     
     # Create scraper instance
     scraper = GradeScraper(mock_session, student_id=1)
@@ -64,7 +64,7 @@ def test_grade_scraper_invalid_student(mock_session, mock_db_manager):
     """Test GradeScraper initialization with invalid student ID."""
     mock_db_manager.get_student.return_value = None
     
-    with patch("grade_scraper.DatabaseManager", return_value=mock_db_manager):
+    with patch("canvas_session_manager.DatabaseManager", return_value=mock_db_manager):
         with pytest.raises(ValueError, match="Student with ID 999 not found in database"):
             GradeScraper(mock_session, student_id=999)
 

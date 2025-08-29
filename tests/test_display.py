@@ -4,8 +4,8 @@ import unittest
 from unittest.mock import patch
 from io import StringIO
 from datetime import datetime, timedelta
-from grades import Course, Assignment
-from display import display_grades
+from data_models import Course, Assignment
+from grade_formatter import display_grades
 
 class TestDisplay(unittest.TestCase):
     def setUp(self):
