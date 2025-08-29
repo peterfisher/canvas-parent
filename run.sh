@@ -125,11 +125,34 @@ while [[ "$#" -gt 0 ]]; do
                 exit 1
             fi
             ;;
+        --blast)
+            echo "Blasting the database and website directory for a clean start..."
+            # Delete the database file if it exists
+            if [ -f "canvas.db" ]; then
+                echo "Removing canvas.db..."
+                rm -f "canvas.db"
+                echo "Database file removed."
+            else
+                echo "Database file canvas.db not found (may already be clean)."
+            fi
+            
+            # Delete the website directory if it exists
+            if [ -d "frontend/website" ]; then
+                echo "Removing frontend/website directory..."
+                rm -rf "frontend/website"
+                echo "Website directory removed."
+            else
+                echo "Website directory frontend/website not found (may already be clean)."
+            fi
+            
+            echo "Blast complete! Starting with a clean state..."
+            ;;
         -h|--help)
             echo "Usage: $0 [options]"
             echo "Options:"
             echo "  -w, --web [PORT]    Run web server after processing (default port: 8000)"
             echo "  -i, --interval MIN    Run updates every MIN minutes (requires --web)"
+            echo "  --blast             Delete database and website directory for clean start"
             echo "  -h, --help            Show this help message"
             exit 0
             ;;
