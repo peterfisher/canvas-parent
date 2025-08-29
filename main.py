@@ -4,8 +4,7 @@ import logging
 from load_config import load_config
 from login import login_to_canvas
 from canvas_session_manager import create_grade_scraper
-from data_models import parse_grades
-from grade_formatter import display_grades
+
 from datetime import datetime
 from init_database import init_student
 from database import get_db, init_db
@@ -57,9 +56,7 @@ def main():
             logger.info(f"Course '{course_name}': {assignment_count} assignments")
         logger.info("=====================\n")
         
-        # TODO: Once grade parsing is implemented:
-        # parsed_grades = parse_grades(raw_grades)
-        # display_grades(parsed_grades)
+
         
     except Exception as e:
         logger.error(f"Error in main process: {str(e)}")

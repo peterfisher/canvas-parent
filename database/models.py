@@ -58,6 +58,7 @@ class Course(Base):
     # Relationships
     student = relationship("Student", back_populates="courses")
     assignments = relationship("Assignment", back_populates="course", cascade="all, delete-orphan")
+    course_grade = relationship("CourseGrade", back_populates="course", uselist=False, cascade="all, delete-orphan")
 
 class Assignment(Base):
     __tablename__ = "assignments"
@@ -76,6 +77,21 @@ class Assignment(Base):
     
     # Relationships
     course = relationship("Course", back_populates="assignments")
+
+class CourseGrade(Base):
+    __tablename__ = "course_grades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id"))
+    
+    percentage = Column(Float)
+    letter_grade = Column(String)
+    has_grade = Column(Boolean, default=False)
+    raw_grade_text = Column(String)
+    last_updated = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    course = relationship("Course", back_populates="course_grade")
 
 class ServiceMetadata(Base):
     __tablename__ = "service_metadata"

@@ -4,6 +4,65 @@
 
 {% block extra_head %}
 <style>
+    .assignments-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .top-menu {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-buttons {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .nav-button {
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+    
+    .nav-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    .nav-button.active {
+        background: rgba(255, 255, 255, 0.4);
+        font-weight: 600;
+    }
+    
+    .sync-info {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.9em;
+    }
+    
+    .table-header {
+        margin-bottom: 20px;
+    }
+    
+    .table-header h3 {
+        color: #333;
+        font-size: 1.8em;
+        margin: 0;
+        font-weight: 600;
+    }
+    
     .status-indicator {
         display: inline-block;
         width: 20px;
@@ -116,88 +175,35 @@
         margin-left: 12px;
     }
     
-    .nav-buttons {
-        display: flex;
-        gap: 10px;
-    }
-    
-    .nav-button {
-        padding: 8px 15px;
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        text-decoration: none;
-    }
-    
-    .sync-info {
-        text-align: right;
-        margin-bottom: 20px;
-    }
-    
-    .top-menu {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 30px;
-    }
-    
-    .assignments-container {
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-    }
-    
-    .table-header {
-        background-color: var(--secondary-color);
-        padding: 15px;
-        border-radius: 4px;
-        margin-bottom: 20px;
-        text-align: center;
-        font-weight: bold;
-        font-size: 1.2em;
-    }
-    
-    .assignment-row {
-        display: grid;
-        grid-template-columns: 40px 1fr 1fr 1fr 1fr 1fr;
-        padding: 15px;
-        border-bottom: 1px solid var(--border-color);
-        align-items: center;
-    }
-
-    .status-cell, .course-cell, .assignment-cell {
-        text-align: center;
-    }
-    
     /* Section styling */
     .assignment-section {
         margin-bottom: 30px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: 10px;
         overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        background: white;
     }
     
     .section-header {
-        background-color: var(--secondary-color);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 15px 20px;
         cursor: pointer;
         display: flex;
         justify-content: space-between;
         align-items: center;
         user-select: none;
-        transition: background-color 0.2s;
+        transition: all 0.3s ease;
     }
     
     .section-header:hover {
-        background-color: #e8e9ea;
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-1px);
     }
     
     .section-title {
-        font-weight: bold;
+        font-weight: 600;
         font-size: 1.1em;
+        color: white;
     }
     
     .section-info {
@@ -207,7 +213,7 @@
     }
     
     .section-count {
-        background-color: var(--primary-color);
+        background: rgba(255, 255, 255, 0.2);
         color: white;
         padding: 4px 12px;
         border-radius: 20px;
@@ -218,6 +224,7 @@
     .collapse-icon {
         font-size: 1.2em;
         transition: transform 0.3s;
+        color: white;
     }
     
     .section-content {
@@ -242,9 +249,31 @@
         display: grid;
         grid-template-columns: 40px 1fr 1fr 1fr 1fr 1fr;
         padding: 15px;
-        background-color: #f8f9fa;
-        font-weight: bold;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        font-weight: 600;
         border-bottom: 2px solid var(--border-color);
+        color: #333;
+    }
+    
+    .assignment-row {
+        display: grid;
+        grid-template-columns: 40px 1fr 1fr 1fr 1fr 1fr;
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+        transition: background-color 0.2s ease;
+    }
+    
+    .assignment-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .assignment-row:last-child {
+        border-bottom: none;
+    }
+
+    .status-cell, .course-cell, .assignment-cell {
+        text-align: center;
     }
     
     .empty-section {
@@ -252,6 +281,40 @@
         text-align: center;
         color: #6c757d;
         font-style: italic;
+    }
+    
+    @media (max-width: 768px) {
+        .assignments-container {
+            padding: 10px;
+        }
+        
+        .top-menu {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .nav-buttons {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .section-column-headers,
+        .assignment-row {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .section-column-headers {
+            display: none;
+        }
+        
+        .assignment-row {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            padding: 15px;
+        }
     }
 </style>
 {% endblock %}
@@ -263,8 +326,8 @@
         <!-- Left navigation buttons -->
         <div class="nav-buttons">
             <a href="#" class="nav-button">Missing</a>
-            <a href="#" class="nav-button">Grades</a>
-            <a href="#" class="nav-button">Assignments</a>
+            <a href="grades.html" class="nav-button">Grades</a>
+            <a href="assignments.html" class="nav-button active">Assignments</a>
         </div>
         
         <!-- Right sync information -->

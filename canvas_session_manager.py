@@ -2,13 +2,12 @@
 
 import requests
 from typing import List, Type, Dict, Optional
-from bs4 import BeautifulSoup
 from database import get_db
 from scrappers import BaseScraper, AssignmentScraper
 from database.manager import DatabaseManager
 from datetime import datetime
 import logging
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 from dataclasses import dataclass
 
 # Set up logging
@@ -101,6 +100,17 @@ class GradeScraper:
         response.raise_for_status()
         return response.text
     
+    def get_dashboard_page(self) -> str:
+        """Download the Canvas dashboard page.
+        
+        Returns:
+            HTML content of the dashboard page
+        """
+        url = f"{self.base_url}/dashboard"
+        response = self.session.get(url)
+        response.raise_for_status()
+        return response.text
+    
     def scrape_course(self, course_id: str, course_name: str) -> bool:
         """Scrape data for a single course.
         
@@ -129,11 +139,31 @@ class GradeScraper:
                         course_name
                     )
             
+            # Also run the grade scraper to extract course grades
+            from scrappers import GradeScraper
+            grade_scraper = GradeScraper()
+            grade_scraper.set_page_content(html_content, course_id)
+            grade_data = grade_scraper.scrape()
+            
+            # Save course grade if available
+            if grade_data.get("has_course_grade") and grade_data.get("course_grade") is not None:
+                course_grade_data = {
+                    "course_id": course_id,
+                    "course_name": course_name,
+                    "percentage": grade_data.get("course_grade"),
+                    "letter_grade": grade_data.get("course_letter_grade"),
+                    "has_grade": grade_data.get("has_course_grade", False),
+                    "raw_grade_text": f"Total: {grade_data.get('course_grade', 'N/A')}% ({grade_data.get('course_letter_grade', 'N/A')})"
+                }
+                self.db_manager.save_course_grades([course_grade_data], self.student_id)
+            
             return True
             
         except Exception as e:
             logger.error(f"Error scraping course {course_id}: {str(e)}")
             return False
+    
+
     
     def scrape_all_courses(self) -> ScrapingResult:
         """Main method to scrape all courses.
@@ -150,6 +180,8 @@ class GradeScraper:
             # Get student name
             student = self.db_manager.get_student(self.student_id)
             student_name = student.name if student else "Unknown"
+            
+
             
             courses = self.get_course_ids_and_names()
             total_courses = len(courses)

@@ -2,19 +2,144 @@
 
 {% block title %}{{ title }}{% endblock %}
 
-{% block content %}
-<h2>Student Scorecards</h2>
+{% block extra_head %}
+<style>
+    .index-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .page-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 30px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        color: white;
+    }
+    
+    .page-header h2 {
+        font-size: 2.5em;
+        font-weight: 600;
+        margin: 0;
+        color: white;
+    }
+    
+    .students-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 25px;
+        margin-top: 30px;
+    }
+    
+    .student-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 25px;
+        text-align: center;
+        transition: transform 0.3s ease;
+    }
+    
+    .student-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .student-card h3 {
+        color: #333;
+        font-size: 1.5em;
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+    
+    .student-links {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .btn {
+        display: inline-block;
+        padding: 12px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .empty-state h3 {
+        margin-bottom: 10px;
+        color: #333;
+    }
+    
+    @media (max-width: 768px) {
+        .index-container {
+            padding: 10px;
+        }
+        
+        .page-header {
+            padding: 20px 15px;
+        }
+        
+        .page-header h2 {
+            font-size: 2em;
+        }
+        
+        .students-list {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .student-card {
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
 
-{% if students %}
-    <div class="students-list">
-        {% for student in students %}
-            <div class="student-card">
-                <h3>{{ student.name }}</h3>
-                <a href="/assignments_{{ student.id }}.html" class="btn">View Scorecard</a>
-            </div>
-        {% endfor %}
+{% block content %}
+<div class="index-container">
+    <div class="page-header">
+        <h2>Student Scorecards</h2>
     </div>
-{% else %}
-    <p>No students found in the database.</p>
-{% endif %}
+
+    {% if students %}
+        <div class="students-list">
+            {% for student in students %}
+                <div class="student-card">
+                    <h3>{{ student.name }}</h3>
+                    <div class="student-links">
+                        <a href="/assignments_{{ student.id }}.html" class="btn">View Assignments</a>
+                        <a href="/grades_{{ student.id }}.html" class="btn">View Grades</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h3>No Students Found</h3>
+            <p>No students found in the database.</p>
+        </div>
+    {% endif %}
+</div>
 {% endblock %} 

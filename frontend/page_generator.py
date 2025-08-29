@@ -3,7 +3,7 @@ import sqlite3
 import jinja2
 import shutil
 import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 class PageGenerator:
     """
@@ -321,6 +321,107 @@ class PageGenerator:
         
         self.write_file(output_path, html_content)
     
+    def generate_grades_page(self, student_id: Optional[int] = None) -> None:
+        """Generate the grades page for a specific student or all students.
+        
+        Args:
+            student_id: Optional student ID to filter by. If None, shows all students.
+        """
+        # Get course grades from database
+        course_grades = self.get_course_grades(student_id)
+        
+        # Get sync information
+        sync_info = self.get_last_sync_info()
+        
+        # Calculate statistics
+        total_courses = len(course_grades)
+        courses_with_grades = len([c for c in course_grades if c.get('has_grade')])
+        courses_without_grades = total_courses - courses_with_grades
+        
+        # Calculate average percentage
+        grades_with_percentages = [c for c in course_grades if c.get('has_grade') and c.get('percentage') is not None]
+        average_percentage = None
+        if grades_with_percentages:
+            total_percentage = sum(c['percentage'] for c in grades_with_percentages)
+            average_percentage = total_percentage / len(grades_with_percentages)
+        
+        # Format the sync timestamp if available
+        last_sync = None
+        if sync_info.get('timestamp'):
+            try:
+                timestamp = datetime.datetime.fromisoformat(sync_info['timestamp'])
+                last_sync = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                last_sync = sync_info['timestamp']
+        
+        html_content = self.render_template('grades.html', {
+            'course_grades': course_grades,
+            'total_courses': total_courses,
+            'courses_with_grades': courses_with_grades,
+            'courses_without_grades': courses_without_grades,
+            'average_percentage': average_percentage,
+            'last_sync': last_sync,
+            'sync_status': sync_info.get('status')
+        })
+        
+        # Determine output filename based on student filtering
+        if student_id:
+            output_path = os.path.join(self.output_dir, f'grades_{student_id}.html')
+        else:
+            output_path = os.path.join(self.output_dir, 'grades.html')
+        
+        self.write_file(output_path, html_content)
+    
+    def get_course_grades(self, student_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get course grades from the database.
+        
+        Args:
+            student_id: Optional student ID to filter by. If None, gets all students.
+            
+        Returns:
+            List of course grade dictionaries
+        """
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        
+        try:
+            if student_id:
+                # Get grades for specific student
+                cursor = conn.execute("""
+                    SELECT cg.percentage, cg.letter_grade, cg.has_grade, cg.raw_grade_text, 
+                           cg.last_updated, c.course_name, c.canvas_course_id
+                    FROM course_grades cg
+                    JOIN courses c ON cg.course_id = c.id
+                    WHERE c.student_id = ?
+                    ORDER BY c.course_name
+                """, (student_id,))
+            else:
+                # Get grades for all students
+                cursor = conn.execute("""
+                    SELECT cg.percentage, cg.letter_grade, cg.has_grade, cg.raw_grade_text, 
+                           cg.last_updated, c.course_name, c.canvas_course_id
+                    FROM course_grades cg
+                    JOIN courses c ON cg.course_id = c.id
+                    ORDER BY c.course_name
+                """)
+            
+            grades = []
+            for row in cursor.fetchall():
+                grades.append({
+                    'percentage': row['percentage'],
+                    'letter_grade': row['letter_grade'],
+                    'has_grade': bool(row['has_grade']),
+                    'raw_grade_text': row['raw_grade_text'],
+                    'last_updated': row['last_updated'],
+                    'course_name': row['course_name'],
+                    'canvas_course_id': row['canvas_course_id']
+                })
+            
+            return grades
+            
+        finally:
+            conn.close()
+    
     def _group_assignments_into_sections(self, assignments: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
         """
         Group assignments into sections based on their status and sort by due date
@@ -406,9 +507,13 @@ class PageGenerator:
         # Generate assignments page (all students)
         self.generate_assignments_page()
         
+        # Generate grades page (all students)
+        self.generate_grades_page()
+        
         # Generate individual assignment pages for each student
         students = self.get_students()
         for student in students:
             self.generate_assignments_page(student['id'])
+            self.generate_grades_page(student['id'])
         
  

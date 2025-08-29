@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from .models import Assignment, ServiceMetadata, Student, Course
+from .models import Assignment, ServiceMetadata, Student, Course, CourseGrade
 from datetime import datetime
 
 class DatabaseManager:
@@ -116,4 +116,71 @@ class DatabaseManager:
             ServiceMetadata.student_id == student_id
         ).order_by(
             ServiceMetadata.last_scraping_date.desc()
-        ).first() 
+        ).first()
+    
+    def save_course_grades(self, course_grades_data: List[Dict[str, Any]], student_id: int) -> None:
+        """Save course grade data to the database.
+        
+        Args:
+            course_grades_data: List of dictionaries containing course grade data
+            student_id: Database student ID
+        """
+        for grade_data in course_grades_data:
+            canvas_course_id = grade_data.get('course_id')
+            course_name = grade_data.get('course_name')
+            
+            # Get or create the course
+            course = self.get_or_create_course(canvas_course_id, student_id, course_name)
+            
+            # Check if course grade already exists
+            existing_grade = self.db_session.query(CourseGrade).filter(
+                CourseGrade.course_id == course.id
+            ).first()
+            
+            if existing_grade:
+                # Update existing grade
+                existing_grade.percentage = grade_data.get('percentage')
+                existing_grade.letter_grade = grade_data.get('letter_grade')
+                existing_grade.has_grade = grade_data.get('has_grade', False)
+                existing_grade.raw_grade_text = grade_data.get('raw_grade_text', '')
+                existing_grade.last_updated = datetime.utcnow()
+            else:
+                # Create new grade
+                course_grade = CourseGrade(
+                    course_id=course.id,
+                    percentage=grade_data.get('percentage'),
+                    letter_grade=grade_data.get('letter_grade'),
+                    has_grade=grade_data.get('has_grade', False),
+                    raw_grade_text=grade_data.get('raw_grade_text', ''),
+                    last_updated=datetime.utcnow()
+                )
+                self.db_session.add(course_grade)
+        
+        self.db_session.commit()
+    
+    def get_course_grades(self, student_id: int) -> List[Dict[str, Any]]:
+        """Get all course grades for a student.
+        
+        Args:
+            student_id: Database student ID
+            
+        Returns:
+            List of dictionaries containing course grade data
+        """
+        grades = self.db_session.query(CourseGrade, Course).join(Course).filter(
+            Course.student_id == student_id
+        ).all()
+        
+        result = []
+        for grade, course in grades:
+            result.append({
+                'course_id': course.canvas_course_id,
+                'course_name': course.course_name,
+                'percentage': grade.percentage,
+                'letter_grade': grade.letter_grade,
+                'has_grade': grade.has_grade,
+                'raw_grade_text': grade.raw_grade_text,
+                'last_updated': grade.last_updated
+            })
+        
+        return result 
