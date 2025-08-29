@@ -10,6 +10,7 @@ INTERVAL=0
 SERVER_PID=""
 SERVER_PGID=""
 CLEANUP_EXIT_CODE=0
+OUTPUT_DIR=""
 
 # Function to clean up background processes on exit
 cleanup() {
@@ -147,11 +148,21 @@ while [[ "$#" -gt 0 ]]; do
             
             echo "Blast complete! Starting with a clean state..."
             ;;
+        -o|--output)
+            if [[ -n "$2" ]] && [[ "$2" != -* ]]; then
+                OUTPUT_DIR="$2"
+                shift
+            else
+                echo "ERROR: --output requires a directory path" >&2
+                exit 1
+            fi
+            ;;
         -h|--help)
             echo "Usage: $0 [options]"
             echo "Options:"
             echo "  -w, --web [PORT]    Run web server after processing (default port: 8000)"
             echo "  -i, --interval MIN    Run updates every MIN minutes (requires --web)"
+            echo "  -o, --output DIR     Specify custom output directory for generated website"
             echo "  --blast             Delete database and website directory for clean start"
             echo "  -h, --help            Show this help message"
             exit 0
@@ -272,7 +283,12 @@ run_processing() {
 
     # Run frontend/generate_site.py
     echo "[$timestamp] Running frontend/generate_site.py..."
-    python frontend/generate_site.py
+    if [ -n "$OUTPUT_DIR" ]; then
+        echo "[$timestamp] Using custom output directory: $OUTPUT_DIR"
+        python frontend/generate_site.py --output "$OUTPUT_DIR"
+    else
+        python frontend/generate_site.py
+    fi
     local FRONTEND_EXIT_CODE=$?
 
     if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
@@ -292,9 +308,13 @@ if [ $PROCESSING_EXIT_CODE -ne 0 ]; then
     cleanup $PROCESSING_EXIT_CODE
 fi
 
-# Start web server if requested
-if [ "$SERVE_WEBSITE" = true ]; then
-    WEBSITE_DIR="$SCRIPT_DIR/frontend/website"
+    # Start web server if requested
+    if [ "$SERVE_WEBSITE" = true ]; then
+        if [ -n "$OUTPUT_DIR" ]; then
+            WEBSITE_DIR="$OUTPUT_DIR"
+        else
+            WEBSITE_DIR="$SCRIPT_DIR/frontend/website"
+        fi
     
     # Check if website directory exists
     if [ ! -d "$WEBSITE_DIR" ]; then
