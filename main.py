@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import logging
+import sys
+import argparse
 from load_config import load_config
 from login import login_to_canvas
 from canvas_session_manager import create_grade_scraper
@@ -14,6 +16,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Canvas grade scraper')
+    parser.add_argument('--config', type=str, default='config.ini',
+                        help='Path to configuration file (default: config.ini)')
+    args = parser.parse_args()
+    
     db = None
     try:
         # Initialize database tables if they don't exist
@@ -21,8 +29,8 @@ def main():
         logger.info("Database tables initialized")
         
         # Load configuration
-        config = load_config()
-        logger.info("Configuration loaded successfully")
+        config = load_config(args.config)
+        logger.info(f"Configuration loaded successfully from {args.config}")
         
         # Get database session
         db = next(get_db())

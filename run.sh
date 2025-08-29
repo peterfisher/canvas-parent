@@ -11,6 +11,7 @@ SERVER_PID=""
 SERVER_PGID=""
 CLEANUP_EXIT_CODE=0
 OUTPUT_DIR=""
+CONFIG_FILE=""
 
 # Function to clean up background processes on exit
 cleanup() {
@@ -157,12 +158,22 @@ while [[ "$#" -gt 0 ]]; do
                 exit 1
             fi
             ;;
+        -c|--config)
+            if [[ -n "$2" ]] && [[ "$2" != -* ]]; then
+                CONFIG_FILE="$2"
+                shift
+            else
+                echo "ERROR: --config requires a config file path" >&2
+                exit 1
+            fi
+            ;;
         -h|--help)
             echo "Usage: $0 [options]"
             echo "Options:"
             echo "  -w, --web [PORT]    Run web server after processing (default port: 8000)"
             echo "  -i, --interval MIN    Run updates every MIN minutes (requires --web)"
             echo "  -o, --output DIR     Specify custom output directory for generated website"
+            echo "  -c, --config FILE    Specify custom config file path"
             echo "  --blast             Delete database and website directory for clean start"
             echo "  -h, --help            Show this help message"
             exit 0
@@ -186,11 +197,24 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Check if config.ini exists
-if [ ! -f "config.ini" ]; then
-    echo "ERROR: Configuration file 'config.ini' is missing!" >&2
-    echo "Please check the project README for information on how to set up the configuration file." >&2
-    exit 1
+# Check if config file exists
+if [ -n "$CONFIG_FILE" ]; then
+    # Use custom config file
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "ERROR: Custom configuration file '$CONFIG_FILE' is missing!" >&2
+        exit 1
+    fi
+    echo "Using custom config file: $CONFIG_FILE"
+else
+    # Use default config file
+    if [ ! -f "config.ini" ]; then
+        echo "ERROR: Configuration file 'config.ini' is missing!" >&2
+        echo "Please check the project README for information on how to set up the configuration file." >&2
+        echo "Or use --config to specify a custom config file location." >&2
+        exit 1
+    fi
+    CONFIG_FILE="config.ini"
+    echo "Using default config file: $CONFIG_FILE"
 fi
 
 # Function to check if dependencies are installed
@@ -272,7 +296,7 @@ run_processing() {
     
     # Run main.py
     echo "[$timestamp] Running main.py..."
-    python main.py
+    python main.py --config "$CONFIG_FILE"
     local MAIN_EXIT_CODE=$?
 
     if [ $MAIN_EXIT_CODE -ne 0 ]; then
