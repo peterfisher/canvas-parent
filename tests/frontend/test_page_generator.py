@@ -95,23 +95,7 @@ class TestPageGenerator(unittest.TestCase):
             </html>
             ''')
             
-        with open(os.path.join(self.template_dir, 'student.html'), 'w') as f:
-            f.write('''
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>{{ title }}</title>
-            </head>
-            <body>
-                <h1>{{ student_name }}</h1>
-                <ul>
-                {% for course in courses %}
-                    <li>{{ course.name }} - {{ course.grade }}</li>
-                {% endfor %}
-                </ul>
-            </body>
-            </html>
-            ''')
+
             
         with open(os.path.join(self.template_dir, 'assignments.html'), 'w') as f:
             f.write('''
@@ -125,11 +109,15 @@ class TestPageGenerator(unittest.TestCase):
                     <p>Last Sync: {{ last_sync }}</p>
                 </div>
                 <h1>Assignments</h1>
-                <ul>
-                {% for assignment in assignments %}
-                    <li>{{ assignment.name }} - {{ assignment.course_name }} - {{ assignment.status }}</li>
-                {% endfor %}
-                </ul>
+                {% if assignment_sections %}
+                    {% for section_key, section_data in [('missing', assignment_sections.missing), ('upcoming', assignment_sections.upcoming), ('graded', assignment_sections.graded), ('unknown', assignment_sections.unknown)] %}
+                        {% if section_data.assignments %}
+                            {% for assignment in section_data.assignments %}
+                                <div>{{ assignment.name }} - {{ assignment.course_name }} - {{ assignment.status }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
             </body>
             </html>
             ''')
@@ -157,17 +145,7 @@ class TestPageGenerator(unittest.TestCase):
         self.assertEqual(len(students), 1)
         self.assertEqual(students[0]['name'], 'Test Student')
     
-    def test_get_courses_for_student(self):
-        courses = self.generator.get_courses_for_student(1)
-        self.assertEqual(len(courses), 2)
-        self.assertEqual(courses[0]['name'], 'Math')
-        self.assertEqual(courses[1]['name'], 'Science')
-    
-    def test_get_assignments_for_course(self):
-        assignments = self.generator.get_assignments_for_course(1)
-        self.assertEqual(len(assignments), 2)
-        self.assertEqual(assignments[0]['name'], 'Homework 1')
-        self.assertEqual(assignments[1]['name'], 'Homework 2')
+
     
     def test_get_all_assignments(self):
         # Test getting all assignments
@@ -227,20 +205,7 @@ class TestPageGenerator(unittest.TestCase):
         self.assertIn('Student List', content)
         self.assertIn('Test Student', content)
     
-    def test_generate_student_page(self):
-        # No mocking, test the actual method
-        self.generator.generate_student_page(1, 'Test Student')
-        
-        # Check if student page was created
-        student_path = os.path.join(self.output_dir, 'student_1', 'index.html')
-        self.assertTrue(os.path.exists(student_path))
-        
-        # Check if the file contains expected content
-        with open(student_path, 'r') as f:
-            content = f.read()
-        
-        self.assertIn('Test Student', content)
-        self.assertIn('Math - A', content)
+
     
     def test_generate_assignments_page(self):
         # Test generating assignments page for all students
@@ -263,8 +228,8 @@ class TestPageGenerator(unittest.TestCase):
         # Test generating assignments page for a specific student
         self.generator.generate_assignments_page(1)
         
-        # Check if student-specific assignments.html was created
-        student_assignments_path = os.path.join(self.output_dir, 'student_1', 'assignments.html')
+        # Check if student-specific assignments_1.html was created
+        student_assignments_path = os.path.join(self.output_dir, 'assignments_1.html')
         self.assertTrue(os.path.exists(student_assignments_path))
         
         # Check if the file contains expected content
@@ -297,12 +262,8 @@ class TestPageGenerator(unittest.TestCase):
         assignments_path = os.path.join(self.output_dir, 'assignments.html')
         self.assertTrue(os.path.exists(assignments_path))
         
-        # Check if student page was created
-        student_path = os.path.join(self.output_dir, 'student_1', 'index.html')
-        self.assertTrue(os.path.exists(student_path))
-        
         # Check if student-specific assignments page was created
-        student_assignments_path = os.path.join(self.output_dir, 'student_1', 'assignments.html')
+        student_assignments_path = os.path.join(self.output_dir, 'assignments_1.html')
         self.assertTrue(os.path.exists(student_assignments_path))
         
         # Check if static files were copied

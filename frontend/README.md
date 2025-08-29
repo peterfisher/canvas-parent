@@ -9,7 +9,7 @@ This directory contains code for generating static HTML/JS pages from the Canvas
 - `templates/`: Directory containing HTML templates and static files
   - `base.html`: Base template that all other templates extend
   - `index.html`: Template for the main index page
-  - `student.html`: Template for individual student pages
+  - `assignments.html`: Template for assignment pages
   - `static/`: Static files (CSS, JavaScript, images)
     - `css/`: CSS stylesheets
     - `js/`: JavaScript files
@@ -27,6 +27,9 @@ By default, this will:
 1. Read data from `canvas.db` in the project root
 2. Use templates from `frontend/templates/`
 3. Output static files to `frontend/website/`
+4. Generate `index.html` listing all students with links to their assignments
+5. Generate `assignments.html` with all assignments from all students
+6. Generate `assignments_X.html` for each student's individual assignments
 
 ### Command-line Options
 

@@ -159,35 +159,7 @@ class PageGenerator:
         conn.close()
         return students
     
-    def get_courses_for_student(self, student_id: int) -> List[Dict[str, Any]]:
-        """Get all courses for a student"""
-        conn = self.get_db_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "SELECT * FROM courses WHERE student_id = ?",
-            (student_id,)
-        )
-        courses = [dict(row) for row in cursor.fetchall()]
-        
-        conn.close()
-        return courses
-    
-    def get_assignments_for_course(self, course_id: int) -> List[Dict[str, Any]]:
-        """Get all assignments for a course"""
-        conn = self.get_db_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "SELECT * FROM assignments WHERE course_id = ?",
-            (course_id,)
-        )
-        assignments = [dict(row) for row in cursor.fetchall()]
-        
-        conn.close()
-        return assignments
+
     
     def get_all_assignments(self, student_id: int = None) -> List[Dict[str, Any]]:
         """
@@ -303,26 +275,7 @@ class PageGenerator:
         
         self.write_file(os.path.join(self.output_dir, 'index.html'), html_content)
     
-    def generate_student_page(self, student_id: int, student_name: str) -> None:
-        """Generate a page for a specific student"""
-        courses = self.get_courses_for_student(student_id)
-        
-        # Get assignments for each course
-        for course in courses:
-            course['assignments'] = self.get_assignments_for_course(course['id'])
-        
-        html_content = self.render_template('student.html', {
-            'student_id': student_id,
-            'student_name': student_name,
-            'courses': courses,
-            'title': f'Scorecard for {student_name}'
-        })
-        
-        # Create student directory
-        student_dir = os.path.join(self.output_dir, f'student_{student_id}')
-        os.makedirs(student_dir, exist_ok=True)
-        
-        self.write_file(os.path.join(student_dir, 'index.html'), html_content)
+
     
     def generate_assignments_page(self, student_id: int = None) -> None:
         """
@@ -352,12 +305,9 @@ class PageGenerator:
             'sync_status': sync_info.get('status')
         })
         
-        # Determine output path based on whether we're filtering by student
+        # Determine output filename based on student filtering
         if student_id:
-            # Create student directory
-            student_dir = os.path.join(self.output_dir, f'student_{student_id}')
-            os.makedirs(student_dir, exist_ok=True)
-            output_path = os.path.join(student_dir, 'assignments.html')
+            output_path = os.path.join(self.output_dir, f'assignments_{student_id}.html')
         else:
             output_path = os.path.join(self.output_dir, 'assignments.html')
         
@@ -448,10 +398,9 @@ class PageGenerator:
         # Generate assignments page (all students)
         self.generate_assignments_page()
         
-        # Generate student pages
+        # Generate individual assignment pages for each student
         students = self.get_students()
         for student in students:
-            self.generate_student_page(student['id'], student['name'])
-            
-            # Generate assignments page for this student
-            self.generate_assignments_page(student['id']) 
+            self.generate_assignments_page(student['id'])
+        
+ 
