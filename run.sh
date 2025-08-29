@@ -12,6 +12,7 @@ SERVER_PGID=""
 CLEANUP_EXIT_CODE=0
 OUTPUT_DIR=""
 CONFIG_FILE=""
+BASE_URL=""
 
 # Function to clean up background processes on exit
 cleanup() {
@@ -167,6 +168,15 @@ while [[ "$#" -gt 0 ]]; do
                 exit 1
             fi
             ;;
+        -b|--base-url)
+            if [[ -n "$2" ]] && [[ "$2" != -* ]]; then
+                BASE_URL="$2"
+                shift
+            else
+                echo "ERROR: --base-url requires a base URL path" >&2
+                exit 1
+            fi
+            ;;
         -h|--help)
             echo "Usage: $0 [options]"
             echo "Options:"
@@ -174,6 +184,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -i, --interval MIN    Run updates every MIN minutes (requires --web)"
             echo "  -o, --output DIR     Specify custom output directory for generated website"
             echo "  -c, --config FILE    Specify custom config file path"
+            echo "  -b, --base-url PATH  Specify base URL path for the site (e.g., /canvas)"
             echo "  --blast             Delete database and website directory for clean start"
             echo "  -h, --help            Show this help message"
             exit 0
@@ -307,12 +318,16 @@ run_processing() {
 
     # Run frontend/generate_site.py
     echo "[$timestamp] Running frontend/generate_site.py..."
+    FRONTEND_CMD="python frontend/generate_site.py"
     if [ -n "$OUTPUT_DIR" ]; then
         echo "[$timestamp] Using custom output directory: $OUTPUT_DIR"
-        python frontend/generate_site.py --output "$OUTPUT_DIR"
-    else
-        python frontend/generate_site.py
+        FRONTEND_CMD="$FRONTEND_CMD --output \"$OUTPUT_DIR\""
     fi
+    if [ -n "$BASE_URL" ]; then
+        echo "[$timestamp] Using base URL: $BASE_URL"
+        FRONTEND_CMD="$FRONTEND_CMD --base-url \"$BASE_URL\""
+    fi
+    eval $FRONTEND_CMD
     local FRONTEND_EXIT_CODE=$?
 
     if [ $FRONTEND_EXIT_CODE -ne 0 ]; then

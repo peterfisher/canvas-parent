@@ -129,8 +129,8 @@
                 <div class="student-card">
                     <h3>{{ student.name }}</h3>
                     <div class="student-links">
-                        <a href="/assignments_{{ student.id }}.html" class="btn">View Assignments</a>
-                        <a href="/grades_{{ student.id }}.html" class="btn">View Grades</a>
+                        <a href="{{ base_url }}/assignments_{{ student.id }}.html" class="btn">View Assignments</a>
+                        <a href="{{ base_url }}/grades_{{ student.id }}.html" class="btn">View Grades</a>
                     </div>
                 </div>
             {% endfor %}

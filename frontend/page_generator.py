@@ -10,7 +10,7 @@ class PageGenerator:
     Generates static HTML/JS pages from templates and database data
     """
     
-    def __init__(self, db_path: str, template_dir: str, output_dir: str):
+    def __init__(self, db_path: str, template_dir: str, output_dir: str, base_url: str = ""):
         """
         Initialize the page generator
         
@@ -18,10 +18,12 @@ class PageGenerator:
             db_path: Path to the SQLite database
             template_dir: Directory containing templates
             output_dir: Directory where output files will be written
+            base_url: Base URL path for the site (e.g., "/canvas" for example.com/canvas/)
         """
         self.db_path = db_path
         self.template_dir = template_dir
         self.output_dir = output_dir
+        self.base_url = base_url.rstrip('/')  # Remove trailing slash for consistency
         
         # Set up the template environment
         self.env = jinja2.Environment(
@@ -33,6 +35,9 @@ class PageGenerator:
         self.env.filters['default'] = self._default_filter
         self.env.filters['format_due_date'] = self._format_due_date
         self.env.filters['format_score'] = self._format_score
+        
+        # Add global template variables
+        self.env.globals['base_url'] = self.base_url
         
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)

@@ -19,6 +19,8 @@ def main():
                         help='Path to templates directory (default: project_root/frontend/templates)')
     parser.add_argument('--output', type=str, default=os.path.join(project_root, 'frontend/website'),
                         help='Path to output directory (default: project_root/frontend/website)')
+    parser.add_argument('--base-url', type=str, default='',
+                        help='Base URL path for the site (e.g., "/canvas" for example.com/canvas/)')
     
     args = parser.parse_args()
     
@@ -35,13 +37,18 @@ def main():
     generator = PageGenerator(
         db_path=args.db,
         template_dir=args.templates,
-        output_dir=args.output
+        output_dir=args.output,
+        base_url=args.base_url
     )
     
     # Generate all pages
     print(f"Generating website from database: {args.db}")
     print(f"Using templates from: {args.templates}")
     print(f"Output directory: {args.output}")
+    if args.base_url:
+        print(f"Base URL: {args.base_url}")
+    else:
+        print("Base URL: (root)")
     
     try:
         generator.generate_all_pages()
