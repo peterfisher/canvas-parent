@@ -61,7 +61,11 @@ class GradeScraper:
         self.scrapers.append(scraper)
     
     def get_course_ids_and_names(self) -> List[Dict[str, str]]:
-        """Retrieve all active course IDs and names from Canvas.
+        """Retrieve all active course IDs and names from Canvas using enrollments API.
+        
+        This method uses the more reliable enrollments API instead of the courses API
+        to ensure all courses are included, including those that might be missing
+        from the courses API due to Canvas platform issues.
         
         Returns:
             List of dictionaries containing course IDs and names
@@ -69,21 +73,51 @@ class GradeScraper:
         Raises:
             requests.exceptions.RequestException: If the API request fails
         """
-        courses_url = urljoin(self.base_url, '/api/v1/courses')
+        # Get current user ID
+        current_user_url = urljoin(self.base_url, '/api/v1/users/self')
+        user_response = self.session.get(current_user_url)
+        user_response.raise_for_status()
+        user_data = user_response.json()
+        user_id = user_data.get('id')
+        
+        if not user_id:
+            raise ValueError("Could not determine current user ID from Canvas API")
+        
+        # Get enrollments for the current user
+        enrollments_url = urljoin(self.base_url, f'/api/v1/users/{user_id}/enrollments')
         response = self.session.get(
-            courses_url,
-            params={'enrollment_state': 'active'}
+            enrollments_url,
+            params={
+                'enrollment_state': 'active',
+                'enrollment_type': 'ObserverEnrollment'
+            }
         )
         response.raise_for_status()
         
-        courses: List[Dict] = response.json()
-        course_info = [
-            {"id": str(course['id']), "name": course['name']}
-            for course in courses
-            if 'id' in course and 'name' in course
-        ]
+        enrollments = response.json()
+        course_info = []
         
-        logger.info(f"Retrieved {len(course_info)} active courses from Canvas")
+        for enrollment in enrollments:
+            course_id = enrollment.get('course_id')
+            
+            if course_id:
+                # Get course details to get the course name
+                course_url = urljoin(self.base_url, f'/api/v1/courses/{course_id}')
+                course_response = self.session.get(course_url)
+                
+                if course_response.status_code == 200:
+                    course_data = course_response.json()
+                    course_name = course_data.get('name', 'Unknown')
+                    
+                    if course_name and course_name != 'Unknown':
+                        course_info.append({
+                            "id": str(course_id), 
+                            "name": course_name
+                        })
+                else:
+                    logger.warning(f"Could not get course details for course {course_id}: {course_response.status_code}")
+        
+        logger.info(f"Retrieved {len(course_info)} active courses from Canvas enrollments API")
         return course_info
     
     def get_grades_page(self, course_id: str) -> str:
